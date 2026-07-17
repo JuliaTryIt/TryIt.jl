@@ -1,0 +1,29 @@
+# Codecov configuration for TryIt.jl — human-visible mirror of the
+# Principle-III / FR-042 coverage gate enforced by
+# test/coverage/gate.jl. If this file and gate.jl disagree, fix
+# gate.jl first — it is the authoritative blocker.
+#
+# EARS coverage: NF16 / FR-042.
+
+coverage:
+  status:
+    project:
+      default:
+        target: 80%
+        threshold: 1%
+        if_not_found: fail
+    patch:
+      default:
+        target: 80%
+
+  # UB3 — slug generator — must stay at 100 %.
+  flags:
+    slug:
+      paths:
+        - src/slug.jl
+      carryforward: false
+
+flags:
+  slug:
+    paths:
+      - src/slug.jl
