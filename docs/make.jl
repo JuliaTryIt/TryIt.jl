@@ -12,7 +12,8 @@ makedocs(
         "Standalone App" => "standalone-app.md",
         "Reference" => "reference.md",
         "Rationale" => "rationale.md",
-        "Requirements" => "requirements.md"
+        "Requirements" => "requirements.md",
+        "Development" => "development.md"
     ],
     warnonly=[:missing_docs]
 )

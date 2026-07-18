@@ -74,6 +74,14 @@ function press_keys!(model, keys::AbstractString)
             # keymap moved to match try-rs).
             _press!(model, :ctrl, 't')
             i = nextind(keys, i)
+        elseif c == '\x02'
+            # Ctrl-B — animation picker.
+            _press!(model, :ctrl, 'b')
+            i = nextind(keys, i)
+        elseif c == '\x17'
+            # Ctrl-W — save theme and animation.
+            _press!(model, :ctrl, 'w')
+            i = nextind(keys, i)
         elseif c == '\x10'
             # Ctrl-P — adopt an undated directory into the dated scheme.
             _press!(model, :ctrl, 'p')

@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Development guide and `bin/resolve-envs.sh`. Three environments
+  pin TryIt and each keeps its own `Manifest.toml`; none is updated
+  by pulling a commit that changes dependencies, and the `@TryIt`
+  shared environment is the one that breaks `tryit` itself rather
+  than the build. This went wrong twice while adding CommonMark and
+  TOML, so the recovery is now one command and is documented where a
+  contributor will look.
+
+- Configuration file for `theme` and `animation` (OF6), read from
+  `$TRY_CONFIG`, `$XDG_CONFIG_HOME/tryit/config.toml` or
+  `~/.config/tryit/config.toml`, with precedence environment > file >
+  default. A missing, unreadable or malformed file yields defaults
+  rather than preventing startup. Uses the `TOML` stdlib, so no new
+  external dependency.
+- `Ctrl-B` opens an animation picker, applying each choice live and
+  restoring the previous one on `Esc` (ED21).
+- `Ctrl-W` saves the active theme and animation to the config file
+  and reports where it went (ED22).
+
 - Five colour animations rather than one: `fog` (the former `wash`),
   `aurora`, `plasma`, `rain` and `pulse`, selectable with
   `TRY_ANIMATION` or `TRY_BACKGROUND`. Each derives its palette from

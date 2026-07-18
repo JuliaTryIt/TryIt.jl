@@ -39,6 +39,10 @@ EARS coverage: ED1, ED2, ED3, ED4, ED12, SD1, UN7.
      stderr for the whole TUI session, so `diag` output from inside
      `update!` is invisible — failures have to be surfaced in-frame."
     notice::String = ""
+    "Cursor into [`BACKGROUND_NAMES`](@ref) while in `:animation`."
+    anim_index::Int = 1
+    "Animation active when the picker opened, restored if cancelled."
+    anim_before::String = "fog"
     "Cursor into [`DOC_PAGES`](@ref) while in `:docs`."
     doc_index::Int = 1
     "Scroll offset within the current docs page."
@@ -283,6 +287,44 @@ function _open_theme_picker!(m::SelectorSession)
 end
 
 """
+Open the animation picker (Ctrl-B), remembering the current choice.
+
+EARS coverage: ED21.
+"""
+function _open_animation_picker!(m::SelectorSession)
+    current = animation_name(m.background)
+    m.anim_before = current
+    idx = findfirst(==(current), BACKGROUND_NAMES)
+    m.anim_index = idx === nothing ? 1 : idx
+    m.mode = :animation
+    return nothing
+end
+
+"""
+Animation-picker reducer.
+
+Mirrors the theme picker: moving applies immediately, since an
+animation can only be judged by watching it, so `Esc` has to restore
+whatever was playing when the picker opened.
+"""
+function _update_animation!(m::SelectorSession, evt::Tachikoma.KeyEvent)
+    key = evt.key
+    if key === :enter
+        m.mode = :normal
+    elseif key === :escape
+        m.background = resolve_background(m.anim_before)
+        m.mode = :normal
+    elseif key === :up
+        m.anim_index = max(1, m.anim_index - 1)
+        m.background = resolve_background(BACKGROUND_NAMES[m.anim_index])
+    elseif key === :down
+        m.anim_index = min(length(BACKGROUND_NAMES), m.anim_index + 1)
+        m.background = resolve_background(BACKGROUND_NAMES[m.anim_index])
+    end
+    return nothing
+end
+
+"""
 Theme-picker reducer.
 
 Moving the cursor applies the theme immediately: the only way to
@@ -399,6 +441,10 @@ function Tachikoma.update!(m::SelectorSession, evt::Tachikoma.KeyEvent)
         _update_theme!(m, evt)
         return nothing
     end
+    if m.mode === :animation
+        _update_animation!(m, evt)
+        return nothing
+    end
     if m.mode === :docs
         _update_docs!(m, evt)
         return nothing
@@ -453,6 +499,11 @@ function Tachikoma.update!(m::SelectorSession, evt::Tachikoma.KeyEvent)
     elseif key === :f1
         m.mode = :docs
         m.doc_offset = 0
+    elseif key === :ctrl && evt.char == 'b'
+        _open_animation_picker!(m)
+    elseif key === :ctrl && evt.char == 'w'
+        # ED22 — persist theme and animation, reporting where.
+        notify!(m, save_settings(animation_name(m.background)))
     elseif key === :ctrl && evt.char == 'r'
         _handle_ctrl_r!(m)
     elseif key === :ctrl && evt.char == 'g'
@@ -926,6 +977,7 @@ function Tachikoma.view(m::SelectorSession, f::Tachikoma.Frame)
     m.mode === :choose && _render_choice(m, buf, f.area)
     m.mode === :help && _render_help(m, buf, f.area)
     m.mode === :theme && _render_theme_picker(m, buf, f.area)
+    m.mode === :animation && _render_animation_picker(m, buf, f.area)
     m.mode === :about && _render_about(m, buf, f.area)
     m.mode === :docs && _render_docs(m, buf, f.area)
     return nothing
@@ -943,7 +995,9 @@ const HELP_KEYS = [
     ("Enter", "Open the highlighted try, or create one"),
     ("Ctrl-N", "Create a new dated try"),
     ("Ctrl-T", "Theme picker"),
+    ("Ctrl-B", "Animation picker"),
     ("Ctrl-A", "About"),
+    ("Ctrl-W", "Save theme and animation to the config file"),
     ("Ctrl-R", "Rename the highlighted try"),
     ("Ctrl-D", "Flag the highlighted try for deletion"),
     ("Ctrl-G", "Graduate: drop the date, move out of the tries root"),
@@ -1054,6 +1108,39 @@ function _render_docs(m::SelectorSession, buf, area)
     )
     pane.pane.offset = m.doc_offset
     Tachikoma.render(pane, box, buf)
+    return nothing
+end
+
+"""
+Draw the animation picker (Ctrl-B).
+"""
+function _render_animation_picker(m::SelectorSession, buf, area)
+    names = BACKGROUND_NAMES
+    height = min(length(names) + 2, max(5, area.height - 2))
+    width = min(area.width - 4, 30)
+    (width < 14 || height < 5) && return nothing
+
+    box = Tachikoma.Rect(
+        area.x + div(area.width - width, 2),
+        area.y + max(0, div(area.height - height, 2)),
+        width, height
+    )
+    _blank_area!(m, buf, box)
+    Tachikoma.render(
+        Tachikoma.SelectableList(
+            [Tachikoma.ListItem(n, Tachikoma.tstyle(:text)) for n in names];
+            selected=m.anim_index,
+            focused=true,
+            block=Tachikoma.Block(
+                title="Animation",
+                title_right=string(m.anim_index, "/", length(names)),
+                title_style=Tachikoma.tstyle(:title, bold=true),
+                border_style=Tachikoma.tstyle(:accent, bold=true)
+            ),
+            highlight_style=Tachikoma.tstyle(:accent, bold=true)
+        ),
+        box, buf
+    )
     return nothing
 end
 

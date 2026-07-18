@@ -81,6 +81,20 @@ matching shell function, so the same command works for both.
 | `TRY_BACKGROUND` | Animated background: `wash` (default), `dotwave`, `phylo`, `clado`, `off` |
 | `TRY_BACKGROUND_PRESET` | Variant index for the glyph backgrounds |
 
+## Development
+
+After changing any dependency, re-resolve every environment that pins
+TryIt — the package, `docs`, and the `@TryIt` shared environment the
+shell function runs against:
+
+```sh
+./bin/resolve-envs.sh
+```
+
+Skipping it leaves `tryit` failing to precompile while the test suite
+still passes. See the [development
+guide](https://s-celles.github.io/TryIt.jl/dev/development/).
+
 ## Documentation
 
 Full walkthrough, key bindings, and API reference:

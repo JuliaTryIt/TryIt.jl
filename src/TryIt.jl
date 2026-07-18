@@ -15,6 +15,7 @@ using Dates
 using PrecompileTools
 using REPL
 using CommonMark
+using TOML
 using Tachikoma
 using Unicode
 
@@ -30,6 +31,7 @@ include("terminal.jl")
 include("git.jl")
 include("lifecycle.jl")
 include("theming.jl")
+include("config.jl")
 include("panels.jl")
 include("selector.jl")
 include("shell_init.jl")

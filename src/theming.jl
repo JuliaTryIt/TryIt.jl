@@ -84,6 +84,14 @@ Any background the selector can render.
 """
 const SelectorBackground = Union{Tachikoma.Background, ColorBackground}
 
+"""
+Every background the picker offers, in menu order.
+
+The colour family first, then Tachikoma's glyph backgrounds, then the
+opt-out — most-used to least.
+"""
+const BACKGROUND_NAMES = vcat(ANIMATION_NAMES, ["dotwave", "phylo", "clado", "off"])
+
 # Palette endpoints, re-read every frame so a live theme change is
 # picked up immediately.
 function _palette()
@@ -308,10 +316,8 @@ EARS coverage: OF5.
 """
 function background_from_env()
     Tachikoma.animations_enabled() || return nothing
-    # TRY_BACKGROUND is the original name and keeps precedence;
-    # TRY_ANIMATION says more plainly what is being chosen.
-    kind = get(ENV, BACKGROUND_ENV, "")
-    isempty(kind) && (kind = get(ENV, ANIMATION_ENV, DEFAULT_BACKGROUND))
+    # Environment > config file > default, resolved in config.jl.
+    kind = configured_animation()
     raw = get(ENV, BACKGROUND_PRESET_ENV, "")
     preset = something(tryparse(Int, strip(raw)), 1)
     return resolve_background(kind, preset)
@@ -344,9 +350,22 @@ Returns whether a theme was applied.
 
 EARS coverage: OF4.
 """
-apply_theme_from_env!() = apply_theme!(get(ENV, THEME_ENV, ""))
+apply_theme_from_env!() = apply_theme!(configured_theme())
 
 """
 Every built-in theme name, for documentation and error messages.
 """
 theme_names() = [t.name for t in Tachikoma.ALL_THEMES]
+
+"""
+The configuration name for `bg`, for persisting the current choice.
+"""
+animation_name(::Nothing) = "off"
+animation_name(::FogBackground) = "fog"
+animation_name(::AuroraBackground) = "aurora"
+animation_name(::PlasmaBackground) = "plasma"
+animation_name(::RainBackground) = "rain"
+animation_name(::PulseBackground) = "pulse"
+animation_name(::Tachikoma.DotWaveBackground) = "dotwave"
+animation_name(::Tachikoma.PhyloTreeBackground) = "phylo"
+animation_name(::Tachikoma.CladogramBackground) = "clado"

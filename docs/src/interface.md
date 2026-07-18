@@ -87,6 +87,8 @@ directory's badges do not change position between frames.
 | `Enter`        | `cd` into the selected try, or create one  |
 | `Ctrl-N`       | Create a new dated try                     |
 | `Ctrl-T`       | Theme picker                               |
+| `Ctrl-B`       | Animation picker                           |
+| `Ctrl-W`       | Save theme and animation to the config file |
 | `Ctrl-A`       | About                                      |
 | `?`            | Key-binding overlay                        |
 | `F1`           | Documentation browser                      |
@@ -245,6 +247,31 @@ PackageCompiler bundle contains no markdown files — there are zero in
 it — and `pkgdir` inside a compiled app resolves to the path of the
 machine that built the binary. Reading from disk would have worked
 for whoever ran the build and failed for everyone else.
+
+## Configuration file
+
+`Ctrl-W` writes the active theme and animation to a TOML file:
+
+```toml
+theme = "dracula"
+animation = "plasma"
+```
+
+It is looked for at `$TRY_CONFIG`, then
+`$XDG_CONFIG_HOME/tryit/config.toml`, then
+`~/.config/tryit/config.toml`. XDG is honoured on every platform,
+macOS included, so one dotfile repository behaves the same
+everywhere.
+
+Precedence is **environment > file > default**, so a one-off
+`TRY_THEME=nord tryit` still works without touching the file. A
+missing, unreadable or malformed config yields defaults rather than
+stopping the CLI — a typo in a hand-edited file should cost you the
+wrong theme, not your tool.
+
+`Ctrl-B` picks the animation the same way `Ctrl-T` picks the theme:
+each choice applies as the cursor moves, `Enter` keeps it, `Esc`
+restores what was playing before.
 
 ## Screen recording
 

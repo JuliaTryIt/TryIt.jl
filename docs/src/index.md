@@ -18,5 +18,7 @@ and [`try-rs`](https://github.com/tassiovirginio/try-rs) (Rust), with a TUI buil
 - [Standalone App](standalone-app.md) — build a self-contained
   `tryit` executable with PackageCompiler.
 - [Reference](reference.md) — auto-generated API documentation.
+- [Development](development.md) — gates, drift guards, and the
+  environments a dependency change breaks.
 - [Requirements](requirements.md) — EARS traceability and the path
   to v1.0.
