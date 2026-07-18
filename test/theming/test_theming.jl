@@ -53,7 +53,8 @@ end
     using TryIt
     using Tachikoma
 
-    withenv("TRY_BACKGROUND" => nothing, "TRY_BACKGROUND_PRESET" => nothing) do
+    withenv("TRY_BACKGROUND" => nothing, "TRY_BACKGROUND_PRESET" => nothing,
+        "TRY_ANIMATION" => nothing, "TRY_CONFIG" => "/nonexistent/tryit.toml") do
         # Unset means on, per the opt-out default.
         @test background_from_env() isa TryIt.FogBackground
     end
@@ -110,11 +111,13 @@ end
 
     original = Tachikoma.theme().name
     try
-        withenv("TRY_THEME" => " Dracula ") do
+        withenv("TRY_THEME" => " Dracula ",
+            "TRY_CONFIG" => "/nonexistent/tryit.toml") do
             @test apply_theme_from_env!() === true
             @test Tachikoma.theme().name == "dracula"
         end
-        withenv("TRY_THEME" => nothing) do
+        withenv("TRY_THEME" => nothing,
+            "TRY_CONFIG" => "/nonexistent/tryit.toml") do
             @test apply_theme_from_env!() === false
         end
     finally

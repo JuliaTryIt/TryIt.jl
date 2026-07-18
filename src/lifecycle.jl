@@ -142,7 +142,7 @@ function execute_deletes!(paths)
 end
 
 """
-A pending "adopt this directory into the dated scheme" operation.
+A pending toggle of a directory's date prefix.
 
 Constructing one validates; [`date_try`](@ref) performs the move.
 
@@ -154,21 +154,25 @@ struct DateInvocation
 end
 
 function DateInvocation(src::Try)
-    src.dated &&
-        throw(ArgumentError(string(src.name, " is already dated")))
-    # The prefix is prepended to the name *verbatim*. Re-slugging
-    # would turn `LibPARI.jl` into `libpari-jl` and lose the identity
-    # the user gave the directory; the parser accepts any remainder
-    # after a valid date, so there is no need.
-    stamp = Dates.format(src.date, dateformat"yyyy-mm-dd")
-    dest = joinpath(dirname(src.path), string(stamp, "-", src.name))
+    # A toggle, not a one-way door: dating an undated directory
+    # prepends the prefix, and pressing it again takes the prefix off.
+    dest = if src.dated
+        joinpath(dirname(src.path), src.name)
+    else
+        # The prefix is prepended to the name *verbatim*. Re-slugging
+        # would turn `LibPARI.jl` into `libpari-jl` and lose the
+        # identity the user gave the directory; the parser accepts any
+        # remainder after a valid date, so there is no need.
+        stamp = Dates.format(src.date, dateformat"yyyy-mm-dd")
+        joinpath(dirname(src.path), string(stamp, "-", src.name))
+    end
     ispath(dest) &&
         throw(ArgumentError(string("destination exists: ", dest)))
     return DateInvocation(src, dest)
 end
 
 """
-Perform the dating described by `inv`, returning the new path.
+Perform the date toggle described by `inv`, returning the new path.
 
 The date committed is the one the selector was already showing —
 inferred from the filesystem mtime — so the entry does not appear to

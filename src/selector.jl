@@ -234,11 +234,12 @@ function _update_docs!(m::SelectorSession, evt::Tachikoma.KeyEvent)
 end
 
 """
-Adopt the highlighted undated directory into the dated scheme
-(Ctrl-P), keeping the selector open.
+Toggle the highlighted directory's date prefix (Ctrl-P), keeping the
+selector open.
 
-The date used is the one already on screen, inferred from the
-filesystem mtime, so the row does not jump to today.
+Adding uses the date already on screen — inferred from the filesystem
+mtime — so the row does not jump to today. Removing strips the prefix
+and leaves the rest of the name untouched.
 
 EARS coverage: ED19.
 """
@@ -1001,7 +1002,7 @@ const HELP_KEYS = [
     ("Ctrl-R", "Rename the highlighted try"),
     ("Ctrl-D", "Flag the highlighted try for deletion"),
     ("Ctrl-G", "Graduate: drop the date, move out of the tries root"),
-    ("Ctrl-P", "Add a date prefix to an undated folder"),
+    ("Ctrl-P", "Add or remove the date prefix"),
     ("F9", "Start / stop .tach screen recording"),
     ("?", "This key map"),
     ("F1", "Documentation browser"),

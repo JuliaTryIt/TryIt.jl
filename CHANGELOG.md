@@ -47,8 +47,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `CommonMark.jl` runtime dependency, required by the above; NF1
   amended.
 
-- `Ctrl-P` dates an undated folder from the selector, renaming it in
-  place to `YYYY-MM-DD-<name>` (ED19). It commits the date already
+- `Ctrl-P` toggles a folder's date prefix from the selector (ED19),
+  adding it when absent and removing it when present. It commits the date already
   displayed rather than today's, so the row does not jump, and
   prepends the prefix without re-slugging, so `LibPARI.jl` becomes
   `2026-07-18-LibPARI.jl`. Pressing it on an already-dated try
@@ -156,6 +156,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - This changelog.
 
 ### Fixed
+
+- Config reads and writes take their path explicitly instead of only
+  through `TRY_CONFIG`. `withenv` mutates the process-global `ENV`,
+  so with test items running concurrently one item's cleanup could
+  clear another's override — and `write_config` then fell back to the
+  default path and wrote into the developer's real
+  `~/.config/tryit/`. It did.
 
 - Embedded documentation pages went stale silently. Julia invalidates
   a precompiled image when an *included* source file changes, but a

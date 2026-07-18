@@ -18,17 +18,14 @@ end
 @testitem "config: reading a missing or broken file yields defaults" begin
     using TryIt: read_config
 
+    # Paths are passed explicitly, never via TRY_CONFIG: `withenv`
+    # mutates the process-global ENV, so with test items running
+    # concurrently one item's cleanup can clear another's override.
     mktempdir() do dir
-        withenv("TRY_CONFIG" => joinpath(dir, "absent.toml")) do
-            @test read_config() == Dict{String, Any}()
-        end
-        # A hand-edited file with a syntax error must not stop the CLI
-        # from starting.
+        @test read_config(joinpath(dir, "absent.toml")) == Dict{String, Any}()
         broken = joinpath(dir, "broken.toml")
         write(broken, "theme = = nonsense\n")
-        withenv("TRY_CONFIG" => broken) do
-            @test read_config() == Dict{String, Any}()
-        end
+        @test read_config(broken) == Dict{String, Any}()
     end
 end
 
@@ -37,14 +34,12 @@ end
 
     mktempdir() do dir
         path = joinpath(dir, "nested", "config.toml")
-        withenv("TRY_CONFIG" => path) do
-            # Parent directories are created rather than erroring.
-            @test write_config(Dict("theme" => "dracula", "animation" => "aurora"))
-            @test isfile(path)
-            cfg = read_config()
-            @test cfg["theme"] == "dracula"
-            @test cfg["animation"] == "aurora"
-        end
+        # Parent directories are created rather than erroring.
+        @test write_config(Dict("theme" => "dracula", "animation" => "aurora"), path)
+        @test isfile(path)
+        cfg = read_config(path)
+        @test cfg["theme"] == "dracula"
+        @test cfg["animation"] == "aurora"
     end
 end
 
@@ -54,17 +49,16 @@ end
     mktempdir() do dir
         path = joinpath(dir, "config.toml")
         write(path, "theme = \"gruvbox\"\nanimation = \"plasma\"\n")
-        withenv("TRY_CONFIG" => path, "TRY_THEME" => nothing,
-            "TRY_BACKGROUND" => nothing, "TRY_ANIMATION" => nothing) do
-            @test configured_theme() == "gruvbox"
-            @test configured_animation() == "plasma"
+        withenv("TRY_THEME" => nothing, "TRY_BACKGROUND" => nothing,
+            "TRY_ANIMATION" => nothing) do
+            @test configured_theme(path) == "gruvbox"
+            @test configured_animation(path) == "plasma"
         end
-        # Precedence: environment beats file beats default, matching
-        # try-rs.
-        withenv("TRY_CONFIG" => path, "TRY_THEME" => "nord",
-            "TRY_ANIMATION" => "rain", "TRY_BACKGROUND" => nothing) do
-            @test configured_theme() == "nord"
-            @test configured_animation() == "rain"
+        # Precedence: environment beats file beats default, as try-rs.
+        withenv("TRY_THEME" => "nord", "TRY_ANIMATION" => "rain",
+            "TRY_BACKGROUND" => nothing) do
+            @test configured_theme(path) == "nord"
+            @test configured_animation(path) == "rain"
         end
     end
 end
@@ -75,10 +69,10 @@ end
     mktempdir() do dir
         path = joinpath(dir, "empty.toml")
         write(path, "")
-        withenv("TRY_CONFIG" => path, "TRY_THEME" => nothing,
-            "TRY_BACKGROUND" => nothing, "TRY_ANIMATION" => nothing) do
-            @test configured_theme() == ""            # keep the active theme
-            @test configured_animation() == DEFAULT_BACKGROUND
+        withenv("TRY_THEME" => nothing, "TRY_BACKGROUND" => nothing,
+            "TRY_ANIMATION" => nothing) do
+            @test configured_theme(path) == ""        # keep the active theme
+            @test configured_animation(path) == DEFAULT_BACKGROUND
         end
     end
 end
@@ -96,30 +90,26 @@ end
     end
 end
 
-@testitem "selector: Ctrl-W saves the current theme and animation" begin
-    using TryIt
+@testitem "config: save_settings persists theme and animation" begin
+    using TryIt: save_settings, read_config, apply_theme!
     using Tachikoma
-    include(joinpath(@__DIR__, "..", "tachikoma_helpers.jl"))
 
+    # Driven directly with a path rather than through Ctrl-W and
+    # TRY_CONFIG: an ENV-based override is not safe when test items
+    # run concurrently, and a fallback to the default path writes into
+    # the developer's home directory.
     original = Tachikoma.theme().name
     try
-        mktempdir() do cfgdir
-            path = joinpath(cfgdir, "config.toml")
-            withenv("TRY_CONFIG" => path) do
-                with_tmp_tries() do dir
-                    root = TryIt.TriesPath(positional=dir)
-                    m = TryIt.open_session(root)
-                    TryIt.apply_theme!("dracula")
+        mktempdir() do dir
+            path = joinpath(dir, "config.toml")
+            apply_theme!("dracula")
+            msg = save_settings("plasma", path)
 
-                    press_keys!(m, "\x17")          # Ctrl-W
-                    @test isfile(path)
-                    cfg = TryIt.read_config()
-                    @test cfg["theme"] == "dracula"
-                    @test haskey(cfg, "animation")
-                    # Saving is silent otherwise, so it has to say so.
-                    @test !isempty(m.notice)
-                end
-            end
+            @test isfile(path)
+            @test occursin(path, msg)          # says where it went
+            cfg = read_config(path)
+            @test cfg["theme"] == "dracula"
+            @test cfg["animation"] == "plasma"
         end
     finally
         Tachikoma.set_theme!(Symbol(original))

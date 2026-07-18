@@ -33,8 +33,9 @@ inferred for you. A dated folder keeps its own date even when the
 rest of its name is not a valid slug, so `2026-04-15-MyPkg.jl` is
 listed under April, not today.
 
-`Ctrl-P` adopts an undated folder into the dated scheme, renaming it
-in place to `YYYY-MM-DD-<name>`. It commits the date already shown —
+`Ctrl-P` toggles a folder's date prefix, renaming it in place.
+Adding turns `LibPARI.jl` into `2026-07-18-LibPARI.jl`; pressing it
+again takes the prefix back off. It commits the date already shown —
 the mtime-derived one — rather than today's, so the row does not jump
 after the rename, and it prepends the prefix without re-slugging, so
 `LibPARI.jl` becomes `2026-07-18-LibPARI.jl` rather than
@@ -95,7 +96,7 @@ directory's badges do not change position between frames.
 | `Ctrl-R`       | Rename the selected try                    |
 | `Ctrl-D`       | Flag the selected try for deletion         |
 | `Ctrl-G`       | Graduate the try to the projects directory |
-| `Ctrl-P`       | Add a date prefix to an undated folder     |
+| `Ctrl-P`       | Add or remove the date prefix              |
 | `F9`           | Start / stop `.tach` screen recording      |
 | `Esc`          | Quit without changing directory            |
 | `Ctrl-C`       | Abort                                      |

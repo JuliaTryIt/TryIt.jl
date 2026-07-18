@@ -39,16 +39,45 @@ end
     end
 end
 
-@testitem "lifecycle: a dated try is refused, not re-dated" begin
-    using TryIt: TriesPath, list_tries, slug, create_try, DateInvocation
+@testitem "lifecycle: dating a dated try strips the prefix" begin
+    using TryIt: TriesPath, list_tries, slug, create_try, DateInvocation, date_try
 
+    # A toggle, not a one-way door.
     mktempdir() do dir
         root = TriesPath(positional=dir)
         create_try(root, slug("already"))
         src = only(list_tries(root))
         @test src.dated === true
 
-        @test_throws ArgumentError DateInvocation(src)
+        inv = DateInvocation(src)
+        @test basename(inv.dest_path) == "already"     # date gone
+        date_try(inv)
+        @test isdir(inv.dest_path)
+
+        back = only(list_tries(root))
+        @test back.dated === false
+        @test back.name == "already"
+    end
+end
+
+@testitem "lifecycle: the date toggle round-trips" begin
+    using TryIt: TriesPath, list_tries, DateInvocation, date_try
+
+    mktempdir() do dir
+        root = TriesPath(positional=dir)
+        mkpath(joinpath(dir, "LibPARI.jl"))
+        before = only(list_tries(root))
+
+        date_try(DateInvocation(before))               # add
+        mid = only(list_tries(root))
+        @test mid.dated === true
+        @test mid.name == "LibPARI.jl"
+
+        date_try(DateInvocation(mid))                  # remove
+        after = only(list_tries(root))
+        @test after.dated === false
+        # The name survives both directions untouched.
+        @test after.name == "LibPARI.jl"
     end
 end
 
@@ -88,7 +117,7 @@ end
     end
 end
 
-@testitem "selector: Ctrl-P on a dated try explains itself" begin
+@testitem "selector: Ctrl-P on a dated try removes the prefix" begin
     using TryIt
     using Tachikoma
     include(joinpath(@__DIR__, "..", "tachikoma_helpers.jl"))
@@ -101,8 +130,8 @@ end
 
         press_keys!(m, "\x10")
         @test m.done === false
-        # A silent no-op would read as a dead key, which is exactly
-        # what the stderr-redirect bug produced for Ctrl-G.
-        @test !isempty(m.notice)
+        @test length(m.visible) == 1
+        @test m.visible[1].dated === false
+        @test m.visible[1].name == "already"
     end
 end

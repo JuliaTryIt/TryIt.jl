@@ -6,6 +6,14 @@
 # hand-edited config with a typo in it should cost the user a wrong
 # theme, not their tool.
 #
+# Every entry point takes the path explicitly, defaulting to
+# `config_path()`. Tests must pass one rather than setting
+# `TRY_CONFIG`: `withenv` mutates the process-global `ENV`, so with
+# test items running concurrently one item's cleanup can clear
+# another's override — and a `write_config` that then falls back to
+# the default would write into the developer's real home directory.
+# That happened.
+#
 # EARS coverage: OF6, ED22.
 
 """
@@ -34,8 +42,7 @@ Parse the configuration file, or return an empty `Dict`.
 Never throws: an absent file is the normal case, and a malformed one
 is a typo the user can fix at leisure.
 """
-function read_config()
-    path = config_path()
+function read_config(path::AbstractString=config_path())
     isfile(path) || return Dict{String, Any}()
     return try
         TOML.parsefile(path)
@@ -51,8 +58,7 @@ Returns whether the write succeeded; failure is reported to the
 caller rather than thrown, so a read-only config directory cannot
 take down the selector.
 """
-function write_config(cfg::AbstractDict)
-    path = config_path()
+function write_config(cfg::AbstractDict, path::AbstractString=config_path())
     return try
         mkpath(dirname(path))
         open(path, "w") do io
@@ -70,10 +76,13 @@ Look `key` up with environment-over-file-over-default precedence.
 `env` is consulted first so a one-off `TRY_THEME=nord tryit` still
 works without touching the file.
 """
-function _setting(env::AbstractString, key::AbstractString, default::AbstractString)
+function _setting(
+        env::AbstractString, key::AbstractString, default::AbstractString,
+        path::AbstractString=config_path()
+)
     from_env = strip(get(ENV, env, ""))
     isempty(from_env) || return String(from_env)
-    value = get(read_config(), key, "")
+    value = get(read_config(path), key, "")
     value isa AbstractString && !isempty(strip(value)) && return String(strip(value))
     return String(default)
 end
@@ -84,7 +93,8 @@ The theme to activate at startup.
 Empty means "leave whatever is active", which is what Tachikoma
 restores from its own preferences.
 """
-configured_theme() = _setting(THEME_ENV, "theme", "")
+configured_theme(path::AbstractString=config_path()) = _setting(
+    THEME_ENV, "theme", "", path)
 
 """
 The animation to play behind the selector.
@@ -92,10 +102,10 @@ The animation to play behind the selector.
 `TRY_BACKGROUND` is checked before `TRY_ANIMATION` — it is the older
 name and keeps precedence — then the file, then the default.
 """
-function configured_animation()
+function configured_animation(path::AbstractString=config_path())
     from_background = strip(get(ENV, BACKGROUND_ENV, ""))
     isempty(from_background) || return String(from_background)
-    return _setting(ANIMATION_ENV, "animation", DEFAULT_BACKGROUND)
+    return _setting(ANIMATION_ENV, "animation", DEFAULT_BACKGROUND, path)
 end
 
 """
@@ -104,10 +114,11 @@ Persist the active theme and animation.
 Returns a message describing the outcome, for display in the help
 bar: writing a file the user never sees needs to say so.
 """
-function save_settings(animation::AbstractString)
-    path = config_path()
+function save_settings(
+        animation::AbstractString, path::AbstractString=config_path()
+)
     ok = write_config(
-        Dict("theme" => Tachikoma.theme().name, "animation" => animation)
+        Dict("theme" => Tachikoma.theme().name, "animation" => animation), path
     )
     return ok ? string("saved to ", path) : string("could not write ", path)
 end
