@@ -23,6 +23,26 @@ eval "$(julia --startup-file=no --project=@TryIt -e 'using TryIt; TryIt.main(["i
 Open a fresh shell — `tryit` is now available as a function that
 changes your working directory when it outputs a `cd` command.
 
+
+## Updating a development install
+
+The shell function runs against the `@TryIt` shared environment. That
+environment keeps its own `Manifest.toml`, which is *not* updated when
+you pull a commit that changes the package's dependencies — so `tryit`
+fails on the next invocation with:
+
+```text
+ERROR: Package TryIt does not have CommonMark in its dependencies
+```
+
+Re-resolve the shared environment after any dependency change:
+
+```sh
+julia --startup-file=no --project=@TryIt -e 'using Pkg; Pkg.resolve(); Pkg.precompile()'
+```
+
+The same applies to `docs/`, which has its own manifest.
+
 ## Daily workflow
 
 ### Create a scratch workspace
