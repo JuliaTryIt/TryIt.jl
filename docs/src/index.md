@@ -5,13 +5,14 @@ up a dated scratch directory, drops you into it, and lets you
 clone repositories or take a `git worktree` of the repo you're in
 without polluting your working tree.
 
-See the [EARS specification](https://github.com/s-celles/TryIt.jl/blob/main/SPEC.md)
-for the behavioural contract, and the
-[roadmap](https://github.com/s-celles/TryIt.jl/blob/main/ROADMAP.md)
-for the milestone plan.
+TryIt.jl is a functional mirror of
+[`try-cli`](https://github.com/tobi/try-cli) (Ruby, by Tobi Lütke)
+and [`try-rs`](https://github.com/tassiovirginio/try-rs) (Rust), with a TUI built on [Tachikoma.jl](https://github.com/kahliburke/Tachikoma.jl).
 
 ## Contents
 
 - [Getting Started](getting-started.md) — install, shell
   integration, daily workflow (`tryit`, `tryit clone`, `tryit worktree`).
+- [Standalone App](standalone-app.md) — build a self-contained
+  `tryit` executable with PackageCompiler.
 - [Reference](reference.md) — auto-generated API documentation.

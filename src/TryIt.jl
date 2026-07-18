@@ -1,11 +1,13 @@
 """
     TryIt
 
-Ephemeral-workspace manager CLI. See `SPEC.md` for behaviour and
-`specs/001-walking-skeleton/` for the v0.1 design notes.
+Ephemeral-workspace manager CLI.
 
-Public surface is intentionally minimal (SPEC NG4): the only exported
-entry point is [`main`](@ref). Everything else is internal.
+Public surface is intentionally minimal: the only exported entry
+point is [`main`](@ref). Everything else is internal.
+
+For the compiled standalone build, [`julia_main`](@ref) is the
+PackageCompiler entry point.
 """
 module TryIt
 
@@ -29,6 +31,7 @@ include("lifecycle.jl")
 include("selector.jl")
 include("shell_init.jl")
 include("cli.jl")
+include("app.jl")
 
 export main
 

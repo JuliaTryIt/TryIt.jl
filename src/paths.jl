@@ -27,7 +27,12 @@ function TriesPath(; positional::Union{Nothing, AbstractString}=nothing)
     root, source = _resolve_tries_root(positional)
     abs_root = abspath(normpath(root))
     _ensure_writable(abs_root)
-    return TriesPath(abs_root, source)
+    # Resolve symlinks only after the root is known to exist —
+    # `realpath` throws on a missing path. This matters on macOS,
+    # where `/var` and `/tmp` are symlinks into `/private`: without
+    # it, two spellings of the same root compare unequal and the
+    # graduate/rename collision checks can be fooled.
+    return TriesPath(realpath(abs_root), source)
 end
 
 function _resolve_tries_root(positional::Union{Nothing, AbstractString})

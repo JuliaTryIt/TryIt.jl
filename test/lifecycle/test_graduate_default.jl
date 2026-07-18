@@ -18,7 +18,7 @@
 
         @test session.done === true
         @test session.exit_action === :cd
-        @test session.exit_path == joinpath(parent, "default-target")
+        @test session.exit_path == joinpath(realpath(parent), "default-target")
         @test isdir(session.exit_path)
     end
 end

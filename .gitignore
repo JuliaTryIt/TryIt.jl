@@ -1,0 +1,47 @@
+# Deny-by-default: ignore everything, then allow specific files below.
+*
+
+# Allow descending into subdirectories (required before allowing files).
+!*/
+
+# Julia source & package metadata
+!*.jl
+!*.toml
+!*.cff
+
+# Docs & repo metadata
+!*.md
+!LICENSE
+!LICENSE.*
+!CITATION*
+!.gitignore
+!.gitattributes
+!.editorconfig
+
+# Tooling configs
+!*.yml
+!*.yaml
+!*.json
+!*.sh
+!Makefile
+!Dockerfile
+
+# Re-ignore Julia / docs build artifacts (overrides allow list above).
+Manifest.toml
+/docs/build/
+/docs/site/
+# PackageCompiler app bundle: vendors the whole Julia share/ tree,
+# so the *.jl / *.toml allow-rules above would otherwise sweep in
+# thousands of runtime files.
+/build/tryit-app/
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+lcov.info
+
+# Re-ignore editor / OS / env files.
+.vscode/
+.idea/
+.DS_Store
+.env
+.env.local

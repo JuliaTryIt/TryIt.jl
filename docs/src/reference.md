@@ -6,9 +6,15 @@
 TryIt.main
 ```
 
+## Shell integration
+
+```@docs
+TryIt.emit_shell_init
+```
+
 ## Notes
 
-Per SPEC §8 NG4, `TryIt` does not expose a Julia library API
+`TryIt` does not expose a Julia library API
 until a future major release. The only supported public entry
 point is the CLI command surface documented on the
 [Getting Started](getting-started.md) page. Everything else in

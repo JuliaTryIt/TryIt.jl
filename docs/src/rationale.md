@@ -101,9 +101,8 @@ scripted users from mysterious failures.
 
 ## Why Tachikoma.jl (not Term.jl)
 
-v0.1 briefly considered Term.jl. The Clarifications entry in
-[`specs/001-walking-skeleton/spec.md`](https://github.com/s-celles/TryIt.jl/blob/main/specs/001-walking-skeleton/spec.md)
-records the swap to Tachikoma.jl. Two properties mattered:
+v0.1 briefly considered Term.jl before swapping to Tachikoma.jl.
+Two properties mattered:
 
 - **Elm-inspired Model/update/view.** Our `SelectorSession` is a
   pure-data `Model` we mutate via `update!(model, event)`. This

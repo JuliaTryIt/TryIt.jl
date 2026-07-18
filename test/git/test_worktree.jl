@@ -18,7 +18,7 @@
                     path = String(m.captures[1])
                     @test isdir(path)
                     @test occursin("-feature-spike", basename(path))
-                    @test startswith(path, dir)
+                    @test startswith(path, realpath(dir))
                     # Worktree leaves a .git file/dir in the destination.
                     @test ispath(joinpath(path, ".git"))
                 end

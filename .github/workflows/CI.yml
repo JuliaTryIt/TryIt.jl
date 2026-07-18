@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+      - main
+    tags: ['*']
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != format('refs/heads/{0}', github.event.repository.default_branch) }}
+
+jobs:
+  test:
+    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - '1.10'   # LTS floor (NF11)
+          - '1'      # current stable
+          - 'nightly'
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+        arch:
+          - x64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - uses: julia-actions/cache@v2
+      - uses: julia-actions/julia-buildpkg@v1
+      - uses: julia-actions/julia-runtest@v1
+      - uses: julia-actions/julia-processcoverage@v1
+      - name: Enforce coverage thresholds (NF16 / FR-042)
+        # Only run the gate on Linux-1 to avoid matrix-cell noise;
+        # slug coverage is platform-independent.
+        if: matrix.os == 'ubuntu-latest' && matrix.version == '1'
+        run: julia --startup-file=no --project=. test/coverage/gate.jl
+      - uses: codecov/codecov-action@v4
+        with:
+          files: lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+
+  format:
+    name: Format check (SciML style)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1'
+      - uses: julia-actions/cache@v2
+      - name: Install JuliaFormatter
+        run: julia --startup-file=no -e 'using Pkg; Pkg.add(name="JuliaFormatter", version="1")'
+      - name: Check formatting
+        run: |
+          julia --startup-file=no -e '
+            using JuliaFormatter
+            ok = format(".", verbose=true)
+            if !ok
+              println(stderr, "JuliaFormatter produced changes; run `using JuliaFormatter; format(\".\")` and commit.")
+              exit(1)
+            end
+          '

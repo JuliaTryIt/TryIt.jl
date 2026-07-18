@@ -10,8 +10,9 @@ as the tries root. When `nothing`, the function resolves the root
 from `\$TRY_PATH` at call time (with `\$HOME/src/tries` as the
 fallback).
 
-See [`contracts/shell-init-output.md`](../../specs/001-walking-skeleton/contracts/shell-init-output.md)
-for the exact shape.
+When running as a compiled PackageCompiler app (see
+[`_APP_MODE`](@ref)), the emitted function calls the `tryit`
+executable directly instead of booting `julia`.
 
 EARS coverage: UB4, ED13.
 """
@@ -19,7 +20,6 @@ function emit_shell_init(
         io::IO,
         positional::Union{Nothing, AbstractString}=nothing
 )
-    julia = _julia_binary()
     tries = if positional === nothing
         # Keep this as a shell-syntax literal — resolved by the shell
         # at call time, not by Julia at `tryit init` time.
@@ -28,18 +28,37 @@ function emit_shell_init(
         _shell_quote(String(positional))
     end
 
+    # A compiled app bundles its own runtime, so it is invoked
+    # directly; the interpreted form has to boot julia against the
+    # `@TryIt` shared environment. Everything else is identical.
+    exe, invocation, missing_msg = if _APP_MODE[]
+        binary = _app_binary()
+        (binary, _shell_quote(binary), "tryit: tryit binary not found")
+    else
+        julia = _julia_binary()
+        (
+            julia,
+            string(
+                _shell_quote(julia),
+                " --startup-file=no --project=@TryIt",
+                " -e 'using TryIt; TryIt.main(ARGS)' --"
+            ),
+            "tryit: julia not found"
+        )
+    end
+
     # NB: we deliberately emit a plain POSIX function (no `function`
     # keyword) so bash and zsh both accept it unchanged.
     print(
         io,
         """
         tryit() {
-          if ! command -v $(_shell_quote(julia)) >/dev/null 2>&1; then
-            echo "tryit: julia not found" >&2
+          if ! command -v $(_shell_quote(exe)) >/dev/null 2>&1; then
+            echo "$(missing_msg)" >&2
             return 127
           fi
           local __try_cmd
-          __try_cmd=\$(TRY_PATH=$(tries) $(_shell_quote(julia)) --startup-file=no --project=@TryIt -e 'using TryIt; TryIt.main(ARGS)' -- "\$@") || return \$?
+          __try_cmd=\$(TRY_PATH=$(tries) $(invocation) "\$@") || return \$?
           [ -n "\$__try_cmd" ] && eval "\$__try_cmd"
         }
         """

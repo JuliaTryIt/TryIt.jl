@@ -13,7 +13,7 @@
             path = String(m.captures[1])
             @test isdir(path)
             @test occursin("-bar", basename(path))
-            @test startswith(path, dir)
+            @test startswith(path, realpath(dir))
         end
     end
 end

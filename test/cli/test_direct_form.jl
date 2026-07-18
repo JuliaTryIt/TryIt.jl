@@ -14,7 +14,7 @@
         # And the directory must exist.
         path = String(match(r"^cd '([^']*)'", out).captures[1])
         @test isdir(path)
-        @test startswith(path, dir)
+        @test startswith(path, realpath(dir))
     end
 end
 
