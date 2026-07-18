@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `Ctrl-P` dates an undated folder from the selector, renaming it in
+  place to `YYYY-MM-DD-<name>` (ED19). It commits the date already
+  displayed rather than today's, so the row does not jump, and
+  prepends the prefix without re-slugging, so `LibPARI.jl` becomes
+  `2026-07-18-LibPARI.jl`. Pressing it on an already-dated try
+  reports why instead of doing nothing.
+
 - Backlog of gaps against `try-rs` recorded in `spec.md` §12 (B1–B14)
   after auditing its source: a `config.toml` layer, multiple tries
   paths, fuzzy ranked matching, an inline picker, multi-shell setup,

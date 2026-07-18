@@ -74,6 +74,10 @@ function press_keys!(model, keys::AbstractString)
             # keymap moved to match try-rs).
             _press!(model, :ctrl, 't')
             i = nextind(keys, i)
+        elseif c == '\x10'
+            # Ctrl-P — adopt an undated directory into the dated scheme.
+            _press!(model, :ctrl, 'p')
+            i = nextind(keys, i)
         elseif c == '\x0e'
             # Ctrl-N — placeholder-create binding.
             _press!(model, :ctrl, 'n')

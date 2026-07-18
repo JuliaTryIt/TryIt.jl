@@ -31,7 +31,14 @@ repository cloned in by hand: they are listed **dimmed**, dated from
 their filesystem mtime, to distinguish a date you chose from one
 inferred for you. A dated folder keeps its own date even when the
 rest of its name is not a valid slug, so `2026-04-15-MyPkg.jl` is
-listed under April, not today. Each row carries a coloured project-type badge, the creation
+listed under April, not today.
+
+`Ctrl-P` adopts an undated folder into the dated scheme, renaming it
+in place to `YYYY-MM-DD-<name>`. It commits the date already shown —
+the mtime-derived one — rather than today's, so the row does not jump
+after the rename, and it prepends the prefix without re-slugging, so
+`LibPARI.jl` becomes `2026-07-18-LibPARI.jl` rather than
+`2026-07-18-libpari-jl`. Each row carries a coloured project-type badge, the creation
 date, the slug, and a right-aligned age in `DDd HHh MMm`. The counter
 in the top border shows cursor position within the filtered list.
 
@@ -85,6 +92,7 @@ directory's badges do not change position between frames.
 | `Ctrl-R`       | Rename the selected try                    |
 | `Ctrl-D`       | Flag the selected try for deletion         |
 | `Ctrl-G`       | Graduate the try to the projects directory |
+| `Ctrl-P`       | Add a date prefix to an undated folder     |
 | `F9`           | Start / stop `.tach` screen recording      |
 | `Esc`          | Quit without changing directory            |
 | `Ctrl-C`       | Abort                                      |

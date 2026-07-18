@@ -193,6 +193,45 @@ function refresh_panels!(m::SelectorSession)
 end
 
 """
+Adopt the highlighted undated directory into the dated scheme
+(Ctrl-P), keeping the selector open.
+
+The date used is the one already on screen, inferred from the
+filesystem mtime, so the row does not jump to today.
+
+EARS coverage: ED19.
+"""
+function _handle_ctrl_p!(m::SelectorSession)
+    (isempty(m.visible) || m.cursor < 1 || m.cursor > length(m.visible)) &&
+        return nothing
+    src = m.visible[m.cursor]
+    local inv::DateInvocation
+    try
+        inv = DateInvocation(src)
+    catch err
+        if err isa ArgumentError
+            notify!(m, _err_msg(err))
+            return nothing
+        end
+        rethrow()
+    end
+    local dest::String
+    try
+        dest = date_try(inv)
+    catch err
+        notify!(m, _err_msg(err))
+        return nothing
+    end
+    # Re-snapshot so the row shows its new, dated form.
+    m.all_tries = list_tries(m.root)
+    refresh_visible!(m)
+    idx = findfirst(t -> t.path == dest, m.visible)
+    idx === nothing || (m.cursor = idx)
+    _scroll_after_cursor_move!(m)
+    return nothing
+end
+
+"""
 Open the theme picker (Ctrl-T), remembering the current theme.
 
 EARS coverage: ED15.
@@ -368,6 +407,8 @@ function Tachikoma.update!(m::SelectorSession, evt::Tachikoma.KeyEvent)
         _open_theme_picker!(m)
     elseif key === :ctrl && evt.char == 'a'
         m.mode = :about
+    elseif key === :ctrl && evt.char == 'p'
+        _handle_ctrl_p!(m)
     elseif key === :ctrl && evt.char == 'r'
         _handle_ctrl_r!(m)
     elseif key === :ctrl && evt.char == 'g'
@@ -861,6 +902,7 @@ const HELP_KEYS = [
     ("Ctrl-R", "Rename the highlighted try"),
     ("Ctrl-D", "Flag the highlighted try for deletion"),
     ("Ctrl-G", "Graduate: drop the date, move out of the tries root"),
+    ("Ctrl-P", "Add a date prefix to an undated folder"),
     ("F9", "Start / stop .tach screen recording"),
     ("?", "This help"),
     ("Esc", "Quit without changing directory"),
