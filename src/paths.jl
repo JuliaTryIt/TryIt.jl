@@ -80,17 +80,28 @@ _err_msg(err) = sprint(showerror, err)
 """
 A single dated try. `path = dirname(root) joined with YYYY-MM-DD-<slug>`.
 
-EARS coverage: UB1, UB2.
+EARS coverage: UB1, UB2, ED1, SD7.
 """
 struct Try
     "Absolute path to the try's directory."
     path::String
-    "Slug portion of the basename (after the date prefix)."
+    "Slug portion of the basename, or one derived from it when undated."
     slug::Slug
-    "Creation-date prefix parsed from the basename."
+    "Date prefix parsed from the basename, or the mtime's date when undated."
     date::Date
     "Last-modified timestamp (seconds since epoch)."
     mtime::Float64
+    "Directory basename, exactly as it appears on disk. May hold
+     characters a `Slug` cannot, such as `LibPARI.jl`."
+    name::String
+    "Whether the basename carried a `YYYY-MM-DD-` prefix. Undated
+     directories are listed too, distinguished in the selector."
+    dated::Bool
+end
+
+# Back-compat: everything that constructs a dated try keeps working.
+function Try(path::AbstractString, s::Slug, date::Date, mtime::Real)
+    Try(String(path), s, date, Float64(mtime), s.value, true)
 end
 
 """
@@ -174,16 +185,45 @@ function list_tries(root::TriesPath)
     for name in readdir(root.root; sort=false)
         full = joinpath(root.root, name)
         isdir(full) || continue
+        stamp = mtime(full)
         parsed = _parse_try_basename(name)
-        parsed === nothing && continue
-        date, s = parsed
-        push!(entries, Try(full, s, date, mtime(full)))
+        if parsed === nothing
+            # Not one of our dated directories, but still a folder the
+            # user put here — list it, dated from the filesystem, and
+            # let the selector render it differently.
+            push!(
+                entries,
+                Try(full, _derive_slug(name), Date(unix2datetime(stamp)),
+                    stamp, String(name), false)
+            )
+        else
+            date, rest = parsed
+            push!(
+                entries,
+                Try(full, _derive_slug(rest), date, stamp, String(rest), true)
+            )
+        end
     end
     sort!(entries; by=t -> t.mtime, rev=true)
     return entries
 end
 
 const _TRY_BASENAME_RE = r"^(\d{4})-(\d{2})-(\d{2})-(.+)$"
+
+"""
+Best-effort slug for a directory whose name was never one.
+
+Used for undated entries so that graduate and rename have something
+canonical to work with. Falls back to the raw name when it projects
+to nothing at all (a directory called `...`, say).
+"""
+function _derive_slug(name::AbstractString)
+    return try
+        slug(name)
+    catch err
+        err isa ArgumentError ? Slug(String(name)) : rethrow()
+    end
+end
 
 function _parse_try_basename(name::AbstractString)
     m = match(_TRY_BASENAME_RE, name)
@@ -200,12 +240,13 @@ function _parse_try_basename(name::AbstractString)
     catch
         return nothing
     end
-    # The slug portion must match UB3's output alphabet; if not, it's
-    # not one of our tries.
-    if !occursin(r"^[a-z0-9]+(-[a-z0-9]+)*$", rest)
-        return nothing
-    end
-    return (date, Slug(String(rest)))
+    # The remainder is NOT required to match UB3's output alphabet.
+    # It once was, on the reasoning that anything else "is not one of
+    # our tries" — but every directory is listed now, so rejecting it
+    # here only meant misreading a genuinely dated try as undated and
+    # stamping it with today's mtime. `2026-04-15-s-celles-Nghttp2Wrapper.jl`
+    # is a real example: uppercase and a dot in the remainder.
+    return (date, String(rest))
 end
 
 """
@@ -219,7 +260,7 @@ function filter_tries(entries::Vector{Try}, query::AbstractString)
     isempty(query) && return entries
     needle = lowercase(query)
     return filter(entries) do t
-        haystack = lowercase(string(t.date, " ", t.slug.value))
+        haystack = lowercase(string(t.date, " ", t.name))
         return occursin(needle, haystack)
     end
 end
@@ -262,6 +303,7 @@ function placeholder_slug_for_today(
 )
     used = Set{Int}()
     for t in list_tries(root)
+        t.dated || continue
         t.date == today || continue
         v = t.slug.value
         if v == "new-try"

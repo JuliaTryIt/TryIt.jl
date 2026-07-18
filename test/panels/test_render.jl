@@ -150,3 +150,27 @@ end
         end
     end
 end
+
+@testitem "panels: undated entries render dimmed" begin
+    using TryIt
+    using Tachikoma
+    include(joinpath(@__DIR__, "..", "tachikoma_helpers.jl"))
+
+    with_tmp_tries() do dir
+        root = TryIt.TriesPath(positional=dir)
+        TryIt.create_try(root, TryIt.slug("dated-one"))
+        mkpath(joinpath(dir, "Tachikoma.jl"))
+        m = TryIt.open_session(root)
+        TryIt.refresh_visible!(m)
+
+        text = join(render_selector(m, 100, 20), "\n")
+        # Both are listed; the undated one keeps its real name, which
+        # a Slug could not hold.
+        @test occursin("dated-one", text)
+        @test occursin("Tachikoma.jl", text)
+
+        byname = Dict(t.name => t for t in m.visible)
+        @test byname["dated-one"].dated === true
+        @test byname["Tachikoma.jl"].dated === false
+    end
+end

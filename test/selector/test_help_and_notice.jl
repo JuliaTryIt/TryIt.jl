@@ -111,3 +111,23 @@ end
         @test isempty(m.notice)
     end
 end
+
+@testitem "selector: ? types into a non-empty filter" begin
+    using TryIt
+    using Tachikoma
+    include(joinpath(@__DIR__, "..", "tachikoma_helpers.jl"))
+
+    # Undated directories are listed under their real names, so a
+    # folder called `what?` is possible and must stay filterable.
+    with_tmp_tries() do dir
+        root = TryIt.TriesPath(positional=dir)
+        mkpath(joinpath(dir, "what?"))
+        m = TryIt.open_session(root)
+
+        press_keys!(m, "what")
+        press_keys!(m, "?")
+        @test m.mode === :normal
+        @test m.filter == "what?"
+        @test length(m.visible) == 1
+    end
+end

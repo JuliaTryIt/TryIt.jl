@@ -25,8 +25,13 @@ pressing `Enter` creates a try with what you typed as the slug. In
 rename mode (`Ctrl-R`) the same box becomes the rename prompt, marked
 with `✎` and a highlighted border.
 
-**Folders** — every try under the tries root, most recently modified
-first. Each row carries a coloured project-type badge, the creation
+**Folders** — every directory under the tries root, most recently
+modified first. That includes folders with no date prefix, such as a
+repository cloned in by hand: they are listed **dimmed**, dated from
+their filesystem mtime, to distinguish a date you chose from one
+inferred for you. A dated folder keeps its own date even when the
+rest of its name is not a valid slug, so `2026-04-15-MyPkg.jl` is
+listed under April, not today. Each row carries a coloured project-type badge, the creation
 date, the slug, and a right-aligned age in `DDd HHh MMm`. The counter
 in the top border shows cursor position within the filtered list.
 

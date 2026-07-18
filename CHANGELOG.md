@@ -112,6 +112,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The selector listed only directories matching `YYYY-MM-DD-<slug>`,
+  so anything else under the tries root was invisible — 8 of 12
+  directories in a real tries path, including hand-cloned
+  repositories. Every directory is now listed; undated ones are
+  rendered dimmed and dated from their filesystem mtime.
+- A dated try whose name was not a valid slug was misread as undated
+  and stamped with today's date: the parser required the portion
+  after the date to match `^[a-z0-9-]+$`, which
+  `2026-04-15-s-celles-Nghttp2Wrapper.jl` fails on its uppercase and
+  dot. The date prefix is now parsed independently of the rest.
+- `?` opens the help overlay only while the filter is empty.
+  Directories are listed under their real names now, so a folder
+  called `what?` is both possible and filterable, and taking `?`
+  unconditionally would have made it unreachable.
+
 - Deleting a try that is a linked git worktree used an unconditional
   `rm -rf`, leaving it registered in its parent repository: `git
   worktree list` kept showing it as `prunable` and its admin

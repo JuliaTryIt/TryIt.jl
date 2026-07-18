@@ -14,7 +14,12 @@ end
 
 function RenameInvocation(src::Try, new_slug::Slug)
     parent = dirname(src.path)
-    dest = joinpath(parent, try_basename(src.date, new_slug))
+    # Renaming an undated directory must not silently promote it into
+    # the dated scheme — the user did not ask for a date.
+    dest = joinpath(
+        parent,
+        src.dated ? try_basename(src.date, new_slug) : new_slug.value
+    )
     isdir(dest) &&
         throw(ArgumentError(string("destination exists: ", dest)))
     return RenameInvocation(src, new_slug, dest)

@@ -376,10 +376,11 @@ function Tachikoma.update!(m::SelectorSession, evt::Tachikoma.KeyEvent)
         _handle_ctrl_d!(m)
     elseif key === :f9
         toggle_recording!(m)
-    elseif key === :char && evt.char == '?'
-        # Safe to take unconditionally: `_parse_try_basename` rejects
-        # slugs outside [a-z0-9-], so no listed try can contain '?'
-        # and a filter holding one could never match.
+    elseif key === :char && evt.char == '?' && isempty(m.filter)
+        # Only while the filter is empty. Undated directories are
+        # listed under their real names now, so a folder called
+        # `what?` is both possible and filterable — taking '?'
+        # unconditionally would make it unreachable.
         m.mode = :help
     elseif key === :char && isprint(evt.char) && evt.char != '\0'
         m.filter *= evt.char
@@ -1110,14 +1111,27 @@ function _render_folders(m::SelectorSession, buf, area)
     for (i, t) in enumerate(m.visible)
         marked = t.path in m.marked_for_delete
         age = string("(", format_age(try_age_seconds(t, now)), ")")
-        left = string(t.date, " ", t.slug.value)
-        row_style = marked ? Tachikoma.tstyle(:text_dim, strikethrough=true) :
-                    Tachikoma.tstyle(:text)
+        left = string(t.date, " ", t.name)
+        # Undated directories are shown too, but dimmed: their date is
+        # the filesystem mtime rather than something the user chose,
+        # so it carries less meaning than a real prefix.
+        row_style = if marked
+            Tachikoma.tstyle(:text_dim, strikethrough=true)
+        elseif t.dated
+            Tachikoma.tstyle(:text)
+        else
+            Tachikoma.tstyle(:text_dim)
+        end
 
         badges = badges_for(m, t)
         glyph = isempty(badges) ? ' ' : BADGE_GLYPH
-        glyph_style = isempty(badges) ? Tachikoma.tstyle(:text_dim) :
-                      get(BADGE_STYLES, badges[1], Tachikoma.tstyle(:text))
+        glyph_style = if isempty(badges)
+            Tachikoma.tstyle(:text_dim)
+        elseif t.dated
+            get(BADGE_STYLES, badges[1], Tachikoma.tstyle(:text))
+        else
+            Tachikoma.tstyle(:text_dim)
+        end
 
         push!(
             items,
