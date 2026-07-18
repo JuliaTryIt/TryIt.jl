@@ -89,6 +89,7 @@ directory's badges do not change position between frames.
 | `Ctrl-T`       | Theme picker                               |
 | `Ctrl-A`       | About                                      |
 | `?`            | Key-binding overlay                        |
+| `F1`           | Documentation browser                      |
 | `Ctrl-R`       | Rename the selected try                    |
 | `Ctrl-D`       | Flag the selected try for deletion         |
 | `Ctrl-G`       | Graduate the try to the projects directory |
@@ -211,6 +212,24 @@ wins over the default.
     Nothing in TryIt currently *toggles* that setting: `Ctrl+A` used
     to, and now opens About. Until a replacement binding exists, use
     `TRY_BACKGROUND=off` to disable the animation.
+
+## Documentation in the terminal
+
+`F1` opens this manual inside the selector. `Tab` pages through it,
+the arrow keys scroll, `Esc` closes.
+
+The pages are the same markdown that builds the website, embedded
+into the package at precompile time and rendered with CommonMark
+through Tachikoma's `MarkdownPane`. Documenter `@docs` directives are
+expanded against the package, so the Reference page shows real
+docstrings in the terminal rather than the directive that stands for
+them.
+
+They are embedded rather than read from `docs/src` because a
+PackageCompiler bundle contains no markdown files — there are zero in
+it — and `pkgdir` inside a compiled app resolves to the path of the
+machine that built the binary. Reading from disk would have worked
+for whoever ran the build and failed for everyone else.
 
 ## Screen recording
 

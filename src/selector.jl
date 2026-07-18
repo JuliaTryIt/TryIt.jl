@@ -39,6 +39,10 @@ EARS coverage: ED1, ED2, ED3, ED4, ED12, SD1, UN7.
      stderr for the whole TUI session, so `diag` output from inside
      `update!` is invisible — failures have to be surfaced in-frame."
     notice::String = ""
+    "Cursor into [`DOC_PAGES`](@ref) while in `:docs`."
+    doc_index::Int = 1
+    "Scroll offset within the current docs page."
+    doc_offset::Int = 0
     "Cursor into `Tachikoma.ALL_THEMES` while in `:theme`."
     theme_index::Int = 1
     "Theme active when the picker opened, restored if it is cancelled."
@@ -188,6 +192,39 @@ function refresh_panels!(m::SelectorSession)
     if selected != m.preview_path
         m.preview_path = selected
         m.preview = isempty(selected) ? PreviewEntry[] : preview_entries(selected)
+    end
+    return nothing
+end
+
+"""
+Docs-browser reducer.
+
+Unlike the `?` overlay this is not dismissed by any key — the pages
+are long, so most keys have to mean "scroll".
+
+EARS coverage: ED20.
+"""
+function _update_docs!(m::SelectorSession, evt::Tachikoma.KeyEvent)
+    key = evt.key
+    n = length(DOC_PAGES)
+    if key === :escape || key === :f1
+        m.mode = :normal
+    elseif key === :tab || key === :right
+        m.doc_index = mod1(m.doc_index + 1, n)
+        m.doc_offset = 0
+    elseif key === :backtab || key === :left
+        m.doc_index = mod1(m.doc_index - 1, n)
+        m.doc_offset = 0
+    elseif key === :down
+        m.doc_offset += 1
+    elseif key === :up
+        m.doc_offset = max(0, m.doc_offset - 1)
+    elseif key === :pagedown || key === :page_down
+        m.doc_offset += 10
+    elseif key === :pageup || key === :page_up
+        m.doc_offset = max(0, m.doc_offset - 10)
+    elseif key === :home
+        m.doc_offset = 0
     end
     return nothing
 end
@@ -362,6 +399,10 @@ function Tachikoma.update!(m::SelectorSession, evt::Tachikoma.KeyEvent)
         _update_theme!(m, evt)
         return nothing
     end
+    if m.mode === :docs
+        _update_docs!(m, evt)
+        return nothing
+    end
     if m.mode === :help || m.mode === :about
         # Any key dismisses; these are reference material, not
         # prompts, so trapping the user behind one specific key would
@@ -409,6 +450,9 @@ function Tachikoma.update!(m::SelectorSession, evt::Tachikoma.KeyEvent)
         m.mode = :about
     elseif key === :ctrl && evt.char == 'p'
         _handle_ctrl_p!(m)
+    elseif key === :f1
+        m.mode = :docs
+        m.doc_offset = 0
     elseif key === :ctrl && evt.char == 'r'
         _handle_ctrl_r!(m)
     elseif key === :ctrl && evt.char == 'g'
@@ -883,6 +927,7 @@ function Tachikoma.view(m::SelectorSession, f::Tachikoma.Frame)
     m.mode === :help && _render_help(m, buf, f.area)
     m.mode === :theme && _render_theme_picker(m, buf, f.area)
     m.mode === :about && _render_about(m, buf, f.area)
+    m.mode === :docs && _render_docs(m, buf, f.area)
     return nothing
 end
 
@@ -904,7 +949,8 @@ const HELP_KEYS = [
     ("Ctrl-G", "Graduate: drop the date, move out of the tries root"),
     ("Ctrl-P", "Add a date prefix to an undated folder"),
     ("F9", "Start / stop .tach screen recording"),
-    ("?", "This help"),
+    ("?", "This key map"),
+    ("F1", "Documentation browser"),
     ("Esc", "Quit without changing directory"),
     ("Ctrl-C", "Abort")
 ]
@@ -949,6 +995,65 @@ function _render_theme_picker(m::SelectorSession, buf, area)
         ),
         box, buf
     )
+    return nothing
+end
+
+"""
+Draw the in-app documentation browser (F1).
+
+Renders the embedded markdown through Tachikoma's `MarkdownPane`,
+which needs CommonMark — enabled once, lazily, because
+`enable_markdown()` throws if the extension is not loaded.
+
+EARS coverage: ED20.
+"""
+# `enable_markdown()` registers Tachikoma's CommonMark extension. It
+# is idempotent but not free, and the docs browser is opened rarely,
+# so it happens on first use rather than at package load.
+const _MARKDOWN_READY = Ref(false)
+
+function _render_docs(m::SelectorSession, buf, area)
+    isempty(DOC_PAGES) && return nothing
+    if !_MARKDOWN_READY[]
+        try
+            Tachikoma.enable_markdown()
+            _MARKDOWN_READY[] = true
+        catch err
+            # Without CommonMark there is nothing to render; say so in
+            # the frame rather than throwing inside the render loop.
+            notify!(m, string("markdown unavailable: ", _err_msg(err)))
+            m.mode = :normal
+            return nothing
+        end
+    end
+    width = min(area.width - 4, 96)
+    height = max(6, area.height - 2)
+    (width < 24 || height < 6) && return nothing
+
+    box = Tachikoma.Rect(
+        area.x + div(area.width - width, 2),
+        area.y + max(0, div(area.height - height, 2)),
+        width, height
+    )
+    _blank_area!(m, buf, box)
+
+    idx = clamp(m.doc_index, 1, length(DOC_PAGES))
+    title, body = DOC_PAGES[idx]
+    block = Tachikoma.Block(
+        title=string(title, "  (", idx, "/", length(DOC_PAGES), ")"),
+        title_right="Tab page · ↑↓ scroll · Esc close",
+        title_style=Tachikoma.tstyle(:title, bold=true),
+        border_style=Tachikoma.tstyle(:accent, bold=true)
+    )
+
+    # Reflow width has to allow for the block's two border columns
+    # *and* the scrollbar column, or long lines are clipped at the
+    # right edge instead of wrapping.
+    pane = Tachikoma.MarkdownPane(
+        body; width=max(20, width - 5), block=block, show_scrollbar=true
+    )
+    pane.pane.offset = m.doc_offset
+    Tachikoma.render(pane, box, buf)
     return nothing
 end
 
@@ -1334,7 +1439,15 @@ EARS coverage: SD5.
 function _render_footer(m::SelectorSession, buf, area)
     key = Tachikoma.tstyle(:accent, bold=true)
     lbl = Tachikoma.tstyle(:text_dim)
-    left = if !isempty(m.notice)
+    left = if m.mode === :docs
+        [
+            Tachikoma.Span(" Tab ", key), Tachikoma.Span("Page", lbl),
+            Tachikoma.Span(" | ", Tachikoma.tstyle(:border)),
+            Tachikoma.Span("↑↓ ", key), Tachikoma.Span("Scroll", lbl),
+            Tachikoma.Span(" | ", Tachikoma.tstyle(:border)),
+            Tachikoma.Span("Esc ", key), Tachikoma.Span("Close", lbl)
+        ]
+    elseif !isempty(m.notice)
         # A failure the user just caused outranks the binding list —
         # stderr is redirected, so this bar is the only channel left.
         [

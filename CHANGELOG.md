@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `F1` opens the manual inside the selector (ED20). The same markdown
+  that builds the website is embedded at precompile time and rendered
+  with CommonMark through Tachikoma's `MarkdownPane`; Documenter
+  `@docs` directives are expanded against the package, so the
+  Reference page shows real docstrings in the terminal rather than
+  the directive standing for them. Embedded rather than read from
+  disk because a PackageCompiler bundle contains no markdown files
+  and `pkgdir` inside one points at the build machine.
+- `CommonMark.jl` runtime dependency, required by the above; NF1
+  amended.
+
 - `Ctrl-P` dates an undated folder from the selector, renaming it in
   place to `YYYY-MM-DD-<name>` (ED19). It commits the date already
   displayed rather than today's, so the row does not jump, and

@@ -14,6 +14,7 @@ module TryIt
 using Dates
 using PrecompileTools
 using REPL
+using CommonMark
 using Tachikoma
 using Unicode
 
@@ -46,6 +47,9 @@ code. Intended to be invoked from the shell function emitted by
 EARS coverage: UB6.
 """
 main(args::AbstractVector{<:AbstractString}) = exit(Int(cli_main(args)))
+# Last include: `@docs` blocks are expanded against this module, so
+# every docstring — `main` included — must already be defined.
+include("docs_embed.jl")
 
 # Precompile workload — warms the hottest paths at install time so
 # the first `tryit` invocation after precompile does not re-incur
