@@ -3,7 +3,7 @@
     using TryIt
     using Tachikoma
 
-    @test resolve_background("wash") isa TryIt.WashBackground
+    @test resolve_background("wash") isa TryIt.FogBackground
     @test resolve_background("dotwave") isa Tachikoma.DotWaveBackground
     @test resolve_background("phylo") isa Tachikoma.PhyloTreeBackground
     @test resolve_background("clado") isa Tachikoma.CladogramBackground
@@ -30,7 +30,7 @@ end
     # A typo in a config variable must not disable the UI or throw
     # mid-render; it falls back to the default rather than to nothing,
     # which would silently look like an intentional opt-out.
-    @test resolve_background("not-a-background") isa TryIt.WashBackground
+    @test resolve_background("not-a-background") isa TryIt.FogBackground
 end
 
 @testitem "theming: resolve_background clamps the preset" begin
@@ -55,7 +55,7 @@ end
 
     withenv("TRY_BACKGROUND" => nothing, "TRY_BACKGROUND_PRESET" => nothing) do
         # Unset means on, per the opt-out default.
-        @test background_from_env() isa TryIt.WashBackground
+        @test background_from_env() isa TryIt.FogBackground
     end
     withenv("TRY_BACKGROUND" => "off") do
         @test background_from_env() === nothing
@@ -122,8 +122,8 @@ end
     end
 end
 
-@testitem "theming: only the wash survives panel blanking" begin
-    using TryIt: blanks_panels, WashBackground, resolve_background
+@testitem "theming: only the colour family survives panel blanking" begin
+    using TryIt: blanks_panels, FogBackground, resolve_background
     using Tachikoma
 
     # The wash lives in each cell's *background colour*, which
@@ -131,20 +131,20 @@ end
     # panels can be blanked over it. Tachikoma's backgrounds draw
     # foreground braille, which blanking would erase outright, so they
     # render full-bleed instead.
-    @test blanks_panels(WashBackground()) === true
+    @test blanks_panels(FogBackground()) === true
     @test blanks_panels(nothing) === true
     @test blanks_panels(resolve_background("dotwave")) === false
     @test blanks_panels(resolve_background("phylo")) === false
     @test blanks_panels(resolve_background("clado")) === false
 end
 
-@testitem "theming: the wash tints cells without drawing glyphs" begin
-    using TryIt: WashBackground, render_selector_background!
+@testitem "theming: fog tints cells without drawing glyphs" begin
+    using TryIt: FogBackground, render_selector_background!
     using Tachikoma
 
     rect = Tachikoma.Rect(1, 1, 20, 6)
     buf = Tachikoma.Buffer(rect)
-    render_selector_background!(WashBackground(), buf, rect, 1)
+    render_selector_background!(FogBackground(), buf, rect, 1)
 
     for y in 1:6, x in 1:20
         cell = buf.content[Tachikoma.buf_index(buf, x, y)]

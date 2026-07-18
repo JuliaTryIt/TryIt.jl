@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Five colour animations rather than one: `fog` (the former `wash`),
+  `aurora`, `plasma`, `rain` and `pulse`, selectable with
+  `TRY_ANIMATION` or `TRY_BACKGROUND`. Each derives its palette from
+  the active theme, so choosing an animation is independent of
+  choosing a theme. Tests assert the five are mutually distinct and
+  that each changes between frames, so the family cannot quietly
+  become one effect under five names.
+
 - `F1` opens the manual inside the selector (ED20). The same markdown
   that builds the website is embedded at precompile time and rendered
   with CommonMark through Tachikoma's `MarkdownPane`; Documenter

@@ -179,13 +179,28 @@ the session. An unknown `TRY_THEME` is ignored rather than fatal.
 
 On by default. Configure with `TRY_BACKGROUND`:
 
-| Value                                     | Effect                                |
-| ----------------------------------------- | ------------------------------------- |
-| `wash` (default)                          | Animated colour gradient              |
-| `dotwave`                                 | Braille terrain, full-bleed           |
-| `phylo`                                   | Phylogenetic tree, full-bleed         |
-| `clado`                                   | Cladogram, full-bleed                 |
-| `none`, `off`, `no`, `0`, `false`         | Disabled                              |
+Which animation plays is independent of which theme is active: every
+colour animation derives its palette from the theme, so the two
+compose.
+
+| Value                             | Effect                                |
+| --------------------------------- | ------------------------------------- |
+| `fog` (default)                   | Drifting fractal noise                |
+| `aurora`                          | Undulating horizontal bands           |
+| `plasma`                          | Interfering sine fields               |
+| `rain`                            | Falling columns with decaying tails   |
+| `pulse`                           | A single slow brightness breath       |
+| `dotwave`                         | Braille terrain, full-bleed           |
+| `phylo`                           | Phylogenetic tree, full-bleed         |
+| `clado`                           | Cladogram, full-bleed                 |
+| `none`, `off`, `no`, `0`, `false` | Disabled                              |
+
+`TRY_ANIMATION` is an alias for `TRY_BACKGROUND`, which keeps
+precedence. `wash` is still accepted as the former name of `fog`.
+
+The first five paint cell *background colours*; the three from
+Tachikoma paint braille glyphs in the foreground and so render
+full-bleed through the panels.
 
 `TRY_BACKGROUND_PRESET` selects a variant for the glyph backgrounds
 (clamped into range; a non-numeric value is ignored).

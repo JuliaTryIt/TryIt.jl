@@ -82,7 +82,7 @@ changelogs, and traceability matrices can reference them.
 - **OF2.** Where the current working directory is inside a git repository, the system shall accept `tryit worktree`; otherwise it shall print `not inside a git repository` to stderr and exit `64`.
 - **OF3.** Where a file named `.try-template` exists in the tries path, the system shall copy its contents into every newly created try's directory.
 - **OF4.** Where `TRY_THEME` names one of the bundled themes, the system shall activate it at startup; an unrecognised name shall be ignored rather than fatal. (Added 2026-07-18.)
-- **OF5.** Where `TRY_BACKGROUND` is set, the system shall render the named animated background behind the selector, defaulting to an animated colour wash and accepting an opt-out. The background shall be skipped entirely whenever the framework's motion setting is off. (Added 2026-07-18.)
+- **OF5.** Where `TRY_BACKGROUND` or `TRY_ANIMATION` is set, the system shall render the named animation behind the selector, defaulting to a drifting colour fog and accepting an opt-out. The animation shall be selectable independently of the theme, deriving its palette from whichever theme is active. (Amended 2026-07-18: one effect became a family of five.) The background shall be skipped entirely whenever the framework's motion setting is off. (Added 2026-07-18.)
 
 ---
 
