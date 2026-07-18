@@ -292,3 +292,25 @@ function _run_or_fail(cmd)
     proc.exitcode == 0 || error("fixture-helper command failed: $(cmd)")
     return nothing
 end
+
+"""
+    render_selector(model, width, height) -> Vector{String}
+
+Render `model` into an offscreen `width`×`height` buffer and return
+the resulting text grid, one string per row.
+
+Lets the view be asserted on without a TTY. Styles are dropped —
+these tests check layout and content, not colour.
+"""
+function render_selector(model, width::Int, height::Int)
+    rect = Tachikoma.Rect(1, 1, width, height)
+    buf = Tachikoma.Buffer(rect)
+    frame = Tachikoma.Frame(
+        buf, rect, Tachikoma.GraphicsRegion[], Tachikoma.PixelSnapshot[]
+    )
+    Tachikoma.view(model, frame)
+    return [String([Tachikoma.in_bounds(buf, x, y) ?
+                    buf.content[Tachikoma.buf_index(buf, x, y)].char : ' '
+                    for x in 1:width])
+            for y in 1:height]
+end

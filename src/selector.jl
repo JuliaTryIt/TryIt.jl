@@ -36,6 +36,46 @@ EARS coverage: ED1, ED2, ED3, ED4, ED12, SD1, UN7.
     rename_buf::String = ""
     "Absolute paths flagged for delete on selector exit (ED9 / ED10)."
     marked_for_delete::Set{String} = Set{String}()
+    "Badge cache keyed by try path. Populated lazily; `detect_badges`
+     touches the filesystem and the view runs every frame."
+    badge_cache::Dict{String, Vector{Symbol}} = Dict{String, Vector{Symbol}}()
+    "Path the `preview` field currently describes. Empty when none."
+    preview_path::String = ""
+    "Directory listing of the selected try, for the preview panel."
+    preview::Vector{PreviewEntry} = PreviewEntry[]
+    "Filesystem stats for the tries root. `nothing` when unavailable."
+    disk::Union{Nothing, DiskStats} = nothing
+end
+
+"""
+Refresh the side-panel caches to match the current cursor.
+
+Called at the top of every frame, but does real work only when the
+selection actually moved: `preview_entries` and `detect_badges` hit
+the filesystem, and re-running them at the frame rate would stall the
+render on a large try.
+"""
+function refresh_panels!(m::SelectorSession)
+    # Disk stats are resolved once per session — the tries root does
+    # not change while the selector is open.
+    m.disk === nothing && (m.disk = disk_usage(m.root.root))
+
+    selected = (m.cursor >= 1 && m.cursor <= length(m.visible)) ?
+               m.visible[m.cursor].path : ""
+    if selected != m.preview_path
+        m.preview_path = selected
+        m.preview = isempty(selected) ? PreviewEntry[] : preview_entries(selected)
+    end
+    return nothing
+end
+
+"""
+Badges for `t`, memoised in the session's [`badge_cache`](@ref).
+"""
+function badges_for(m::SelectorSession, t::Try)
+    return get!(m.badge_cache, t.path) do
+        detect_badges(t.path)
+    end
 end
 
 """
@@ -369,89 +409,383 @@ function _handle_enter!(m::SelectorSession)
 end
 
 """
+Colour for each project-type badge.
+
+Deliberately built from `Style`/`ColorRGB` rather than `tstyle`: the
+badge palette identifies a language and must stay recognisable across
+themes, where `:primary` / `:accent` shift with the theme.
+"""
+const BADGE_STYLES = Dict(
+    :rust => Tachikoma.Style(fg=Tachikoma.ColorRGB(0xde, 0x59, 0x3f), bold=true),
+    :julia => Tachikoma.Style(fg=Tachikoma.ColorRGB(0x95, 0x58, 0xb2), bold=true),
+    :python => Tachikoma.Style(fg=Tachikoma.ColorRGB(0xff, 0xd4, 0x3b), bold=true),
+    :go => Tachikoma.Style(fg=Tachikoma.ColorRGB(0x00, 0xad, 0xd8), bold=true),
+    :maven => Tachikoma.Style(fg=Tachikoma.ColorRGB(0xc7, 0x1a, 0x36), bold=true),
+    :flutter => Tachikoma.Style(fg=Tachikoma.ColorRGB(0x54, 0xc5, 0xf8), bold=true),
+    :mise => Tachikoma.Style(fg=Tachikoma.ColorRGB(0x7a, 0xb8, 0x55), bold=true),
+    :locked => Tachikoma.Style(fg=Tachikoma.ColorRGB(0x9e, 0x9e, 0x9e), bold=true),
+    :worktree => Tachikoma.Style(fg=Tachikoma.ColorRGB(0x4c, 0xaf, 0x50), bold=true),
+    :submodule => Tachikoma.Style(fg=Tachikoma.ColorRGB(0xba, 0x68, 0xc8), bold=true),
+    :git => Tachikoma.Style(fg=Tachikoma.ColorRGB(0xf0, 0x5c, 0x2e), bold=true)
+)
+
+"""
+Glyph used for every badge.
+
+A filled circle rather than a Nerd Font icon: the reference TUI's
+icons render as tofu on terminals without a patched font, and the
+colour already carries the meaning.
+"""
+const BADGE_GLYPH = '●'
+
+"""
+Width of the right-hand panel column, in cells.
+"""
+const SIDE_PANEL_WIDTH = 34
+
+"""
+Below this content width the right-hand column is dropped entirely.
+"""
+const SIDE_PANEL_MIN_TOTAL = 64
+
+"""
+Badges per row in the legend panel.
+"""
+const LEGEND_COLUMNS = 2
+
+"""
 Render the selector.
 
-Layout (v0.1):
+Layout:
 
 ```text
-┌ TryIt — <root> ───────────────────────────────┐
-│ > <filter>                                    │
-│                                                │
-│  2026-04-19 my-idea                            │
-│  2026-04-18 another-try                        │
-│ ...                                            │
-└ Enter=cd/create · Esc=quit · Ctrl-C=abort ─────┘
+┌ Search/New ─────────────────┐┌ Disk ──────────┐
+│ > <filter>                  ││ Used: … Free: …│
+└─────────────────────────────┘└────────────────┘
+┌ Folders ────────────────────┐┌ Preview ───────┐
+│▸● 2026-04-19 my-idea  (00d…)││ src            │
+│ ● 2026-04-18 another  (01d…)││ README.md      │
+└─────────────────────────────┘└────────────────┘
+                               ┌ Legends ───────┐
+                               │ ● Rust ● Julia │
+                               └────────────────┘
+ ↑↓ Nav │ Enter Select │ Ctrl-R Rename │ Esc Quit
 ```
+
+The right-hand column is dropped below `SIDE_PANEL_MIN_TOTAL` cells
+so the list stays usable in a narrow terminal.
 
 EARS coverage: SD1.
 """
 function Tachikoma.view(m::SelectorSession, f::Tachikoma.Frame)
     buf = f.buffer
-    area = f.area
-    width = area.width
-    height = area.height
-    base_x = area.x
-    base_y = area.y
+    # Downstream scroll math reads this on the next key event.
+    m.terminal_size = (f.area.height, f.area.width)
+    refresh_panels!(m)
 
-    # Header.
-    header = _pad(string("TryIt — ", m.root.root), width)
-    Tachikoma.set_string!(buf, base_x, base_y, header, Tachikoma.tstyle(:primary))
+    rows = Tachikoma.split_layout(
+        Tachikoma.Layout(
+            Tachikoma.Vertical, [Tachikoma.Fill(), Tachikoma.Fixed(1)]),
+        f.area
+    )
+    length(rows) < 2 && return nothing
+    content_area, footer_area = rows[1], rows[2]
 
-    # Filter / rename input line.
-    prefix, buf_content = if m.mode === :rename
-        ("✎ ", m.rename_buf)
-    else
-        ("> ", m.filter)
-    end
-    filter_line = _pad(string(prefix, buf_content), width)
-    Tachikoma.set_string!(buf, base_x, base_y + 1, filter_line, Tachikoma.tstyle(:text))
-
-    # Separator blank.
-    Tachikoma.set_string!(
-        buf, base_x, base_y + 2, _pad("", width), Tachikoma.tstyle(:text))
-
-    # Rows — render the `[viewport_top, viewport_top + list_rows)` slice.
-    list_top = base_y + 3
-    list_rows = max(0, height - (list_top - base_y) - 1)
-    # Refresh terminal_size for downstream scroll math on redraw.
-    m.terminal_size = (height, width)
-    vp_top = max(1, m.viewport_top)
-    for i in 1:list_rows
-        row_y = list_top + (i - 1)
-        idx = vp_top + i - 1
-        if idx <= length(m.visible)
-            t = m.visible[idx]
-            marker = if idx == m.cursor
-                "▶ "
-            elseif t.path in m.marked_for_delete
-                "✗ "
-            else
-                "  "
-            end
-            line = _pad(string(marker, t.date, " ", t.slug.value), width)
-            style = if idx == m.cursor
-                Tachikoma.tstyle(:accent)
-            elseif t.path in m.marked_for_delete
-                Tachikoma.tstyle(:text_dim)
-            else
-                Tachikoma.tstyle(:text)
-            end
-            Tachikoma.set_string!(buf, base_x, row_y, line, style)
+    show_side = content_area.width >= SIDE_PANEL_MIN_TOTAL
+    left_area = content_area
+    if show_side
+        cols = Tachikoma.split_layout(
+            Tachikoma.Layout(
+                Tachikoma.Horizontal,
+                [Tachikoma.Fill(), Tachikoma.Fixed(SIDE_PANEL_WIDTH)]
+            ),
+            content_area
+        )
+        if length(cols) >= 2
+            left_area = cols[1]
+            _render_side_column(m, buf, cols[2])
         else
-            Tachikoma.set_string!(
-                buf, base_x, row_y, _pad("", width), Tachikoma.tstyle(:text)
-            )
+            show_side = false
         end
     end
 
-    # Footer.
-    footer = _pad(
-        "Enter=cd/create  Esc=quit  Ctrl-C=abort",
-        width
+    lrows = Tachikoma.split_layout(
+        Tachikoma.Layout(
+            Tachikoma.Vertical, [Tachikoma.Fixed(3), Tachikoma.Fill()]),
+        left_area
     )
-    Tachikoma.set_string!(
-        buf, base_x, base_y + height - 1, footer, Tachikoma.tstyle(:text_dim))
+    length(lrows) < 2 && return nothing
+    _render_search(m, buf, lrows[1])
+    _render_folders(m, buf, lrows[2])
+
+    _render_footer(m, buf, footer_area)
     return nothing
+end
+
+"""
+Draw the search / rename input box.
+
+The same box doubles as the rename prompt (SD2), signalled by the
+`✎` prefix and a distinct border colour.
+"""
+function _render_search(m::SelectorSession, buf, area)
+    renaming = m.mode === :rename
+    title = renaming ? "Rename" : "Search/New"
+    prefix, content = renaming ? ("✎ ", m.rename_buf) : ("> ", m.filter)
+    border = renaming ? Tachikoma.tstyle(:warning) : Tachikoma.tstyle(:border)
+
+    inner = Tachikoma.render(
+        Tachikoma.Block(
+            title=title,
+            title_style=Tachikoma.tstyle(:title, bold=true),
+            border_style=border
+        ),
+        area, buf
+    )
+    inner.width <= 0 && return nothing
+    # Trailing block acts as a cursor; the selector has no blinking
+    # caret of its own.
+    line = _pad(string(prefix, content, "▌"), inner.width)
+    Tachikoma.set_string!(buf, inner.x, inner.y, line, Tachikoma.tstyle(:text))
+    return nothing
+end
+
+"""
+Draw the folder list: badge, date, slug, and right-aligned age.
+"""
+function _render_folders(m::SelectorSession, buf, area)
+    total = length(m.visible)
+    block = Tachikoma.Block(
+        title="Folders",
+        title_right=total == 0 ? "" : string(max(m.cursor, 1), "/", total),
+        title_style=Tachikoma.tstyle(:title, bold=true),
+        border_style=Tachikoma.tstyle(:border)
+    )
+
+    if total == 0
+        inner = Tachikoma.render(block, area, buf)
+        inner.width > 0 && Tachikoma.set_string!(
+            buf, inner.x, inner.y,
+            _pad("no tries yet — type a name and press Enter", inner.width),
+            Tachikoma.tstyle(:text_dim)
+        )
+        return nothing
+    end
+
+    # Reserve a column for the scrollbar the list draws when the
+    # content overflows, so the age column never sits under it.
+    inner_w = max(0, area.width - 2)
+    visible_rows = max(0, area.height - 2)
+    inner_w -= (total > visible_rows ? 1 : 0)
+    # SelectableList advances 2 cells for its selection marker
+    # (whether or not the row is selected) and then draws our 2-cell
+    # badge prefix, so 4 cells are gone before `content` starts. The
+    # widget clips at the right edge, so under-reserving here silently
+    # eats the last character of the age column.
+    label_w = max(0, inner_w - 4)
+
+    items = Tachikoma.ListItem[]
+    now = time()
+    for (i, t) in enumerate(m.visible)
+        marked = t.path in m.marked_for_delete
+        age = string("(", format_age(try_age_seconds(t, now)), ")")
+        left = string(t.date, " ", t.slug.value)
+        row_style = marked ? Tachikoma.tstyle(:text_dim, strikethrough=true) :
+                    Tachikoma.tstyle(:text)
+
+        badges = badges_for(m, t)
+        glyph = isempty(badges) ? ' ' : BADGE_GLYPH
+        glyph_style = isempty(badges) ? Tachikoma.tstyle(:text_dim) :
+                      get(BADGE_STYLES, badges[1], Tachikoma.tstyle(:text))
+
+        push!(
+            items,
+            Tachikoma.ListItem(
+                _fit_row(left, age, label_w), row_style;
+                prefix=string(marked ? '✗' : glyph, ' '),
+                prefix_style=marked ? Tachikoma.tstyle(:error) : glyph_style
+            )
+        )
+    end
+
+    Tachikoma.render(
+        Tachikoma.SelectableList(
+            items;
+            selected=max(m.cursor, 1),
+            offset=max(0, m.viewport_top - 1),
+            focused=m.mode !== :rename,
+            block=block,
+            highlight_style=Tachikoma.tstyle(:accent, bold=true)
+        ),
+        area, buf
+    )
+    return nothing
+end
+
+"""
+Draw the stacked Disk / Preview / Legends column.
+"""
+function _render_side_column(m::SelectorSession, buf, area)
+    legend_rows = cld(length(BADGE_ORDER), LEGEND_COLUMNS)
+    rrows = Tachikoma.split_layout(
+        Tachikoma.Layout(
+            Tachikoma.Vertical,
+            [
+                Tachikoma.Fixed(3),
+                Tachikoma.Fill(),
+                Tachikoma.Fixed(legend_rows + 2)
+            ]
+        ),
+        area
+    )
+    length(rrows) < 3 && return nothing
+    _render_disk(m, buf, rrows[1])
+    _render_preview(m, buf, rrows[2])
+    _render_legend(buf, rrows[3])
+    return nothing
+end
+
+"""
+Draw used / free space for the filesystem holding the tries root.
+"""
+function _render_disk(m::SelectorSession, buf, area)
+    inner = Tachikoma.render(
+        Tachikoma.Block(
+            title="Disk",
+            title_style=Tachikoma.tstyle(:title, bold=true),
+            border_style=Tachikoma.tstyle(:border)
+        ),
+        area, buf
+    )
+    inner.width <= 0 && return nothing
+
+    if m.disk === nothing
+        Tachikoma.set_string!(
+            buf, inner.x, inner.y, _pad("unavailable", inner.width),
+            Tachikoma.tstyle(:text_dim)
+        )
+        return nothing
+    end
+
+    x = Tachikoma.set_string!(
+        buf, inner.x, inner.y, "Used: ", Tachikoma.tstyle(:text_dim))
+    x = Tachikoma.set_string!(
+        buf, x, inner.y, format_bytes(m.disk.used), Tachikoma.tstyle(:warning))
+    x = Tachikoma.set_string!(
+        buf, x, inner.y, " │ Free: ", Tachikoma.tstyle(:text_dim))
+    Tachikoma.set_string!(
+        buf, x, inner.y, format_bytes(m.disk.free), Tachikoma.tstyle(:success))
+    return nothing
+end
+
+"""
+Draw the contents of the selected try.
+"""
+function _render_preview(m::SelectorSession, buf, area)
+    inner = Tachikoma.render(
+        Tachikoma.Block(
+            title="Preview",
+            title_style=Tachikoma.tstyle(:title, bold=true),
+            border_style=Tachikoma.tstyle(:border)
+        ),
+        area, buf
+    )
+    (inner.width <= 0 || inner.height <= 0) && return nothing
+
+    if isempty(m.preview)
+        Tachikoma.set_string!(
+            buf, inner.x, inner.y,
+            _pad(isempty(m.preview_path) ? "" : "empty", inner.width),
+            Tachikoma.tstyle(:text_dim)
+        )
+        return nothing
+    end
+
+    for i in 1:min(inner.height, length(m.preview))
+        e = m.preview[i]
+        style = e.isdir ? Tachikoma.tstyle(:primary, bold=true) :
+                Tachikoma.tstyle(:text)
+        Tachikoma.set_string!(
+            buf, inner.x, inner.y + i - 1,
+            _pad(string(e.isdir ? "▸ " : "  ", e.name), inner.width), style
+        )
+    end
+    return nothing
+end
+
+"""
+Draw the badge colour legend.
+"""
+function _render_legend(buf, area)
+    inner = Tachikoma.render(
+        Tachikoma.Block(
+            title="Legends",
+            title_style=Tachikoma.tstyle(:title, bold=true),
+            border_style=Tachikoma.tstyle(:border)
+        ),
+        area, buf
+    )
+    (inner.width <= 0 || inner.height <= 0) && return nothing
+
+    col_w = max(1, div(inner.width, LEGEND_COLUMNS))
+    for (i, badge) in enumerate(BADGE_ORDER)
+        row = cld(i, LEGEND_COLUMNS) - 1
+        col = mod(i - 1, LEGEND_COLUMNS)
+        row >= inner.height && break
+        x = inner.x + col * col_w
+        y = inner.y + row
+        x = Tachikoma.set_string!(
+            buf, x, y, string(BADGE_GLYPH, ' '),
+            get(BADGE_STYLES, badge, Tachikoma.tstyle(:text))
+        )
+        Tachikoma.set_string!(
+            buf, x, y, BADGE_LABELS[badge], Tachikoma.tstyle(:text_dim))
+    end
+    return nothing
+end
+
+"""
+Draw the key-binding help bar.
+"""
+function _render_footer(m::SelectorSession, buf, area)
+    key = Tachikoma.tstyle(:accent, bold=true)
+    lbl = Tachikoma.tstyle(:text_dim)
+    left = if m.mode === :rename
+        [
+            Tachikoma.Span(" Enter ", key), Tachikoma.Span("Apply ", lbl),
+            Tachikoma.Span("Esc ", key), Tachikoma.Span("Cancel ", lbl)
+        ]
+    else
+        [
+            Tachikoma.Span(" ↑↓ ", key), Tachikoma.Span("Nav ", lbl),
+            Tachikoma.Span("Enter ", key), Tachikoma.Span("Select ", lbl),
+            Tachikoma.Span("Ctrl-R ", key), Tachikoma.Span("Rename ", lbl),
+            Tachikoma.Span("Ctrl-D ", key), Tachikoma.Span("Del ", lbl),
+            Tachikoma.Span("Ctrl-G ", key), Tachikoma.Span("Graduate ", lbl)
+        ]
+    end
+    Tachikoma.render(
+        Tachikoma.StatusBar(
+            left=left,
+            right=[Tachikoma.Span("Esc ", key), Tachikoma.Span("Quit ", lbl)]
+        ),
+        area, buf
+    )
+    return nothing
+end
+
+"""
+Compose a row as `left` with `right` flushed to `width`.
+
+When the two cannot both fit, `left` is truncated and `right` is kept
+— the age column is fixed-width and losing it would ragged the
+right edge of the list.
+"""
+function _fit_row(left::AbstractString, right::AbstractString, width::Integer)
+    width <= 0 && return ""
+    length(right) >= width && return _pad(right, width)
+    gap = width - length(right)
+    return string(_pad(left, gap - 1), " ", right)
 end
 
 function _pad(s::AbstractString, width::Integer)

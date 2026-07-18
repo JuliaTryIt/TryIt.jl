@@ -13,6 +13,8 @@ and [`try-rs`](https://github.com/tassiovirginio/try-rs) (Rust), with a TUI buil
 
 - [Getting Started](getting-started.md) — install, shell
   integration, daily workflow (`tryit`, `tryit clone`, `tryit worktree`).
+- [Selector Interface](interface.md) — the panel layout, badges,
+  and key bindings.
 - [Standalone App](standalone-app.md) — build a self-contained
   `tryit` executable with PackageCompiler.
 - [Reference](reference.md) — auto-generated API documentation.

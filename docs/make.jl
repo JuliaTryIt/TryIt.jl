@@ -8,6 +8,7 @@ makedocs(
     pages=[
         "Home" => "index.md",
         "Getting Started" => "getting-started.md",
+        "Selector Interface" => "interface.md",
         "Standalone App" => "standalone-app.md",
         "Reference" => "reference.md",
         "Rationale" => "rationale.md"

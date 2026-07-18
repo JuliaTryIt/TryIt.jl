@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Multi-panel selector TUI, modelled on the reference `try-rs`
+  interface: bordered `Search/New`, `Folders`, `Disk`, `Preview`, and
+  `Legends` panels, plus a key-binding help bar. The folder list now
+  shows a project-type badge and a right-aligned `DDd HHh MMm` age
+  column.
+- Project-type detection (`detect_badges`) for Rust, Julia, Python,
+  Go, Maven, Flutter, and Mise, plus lockfile, git repository, linked
+  worktree, and submodule markers, each with its own legend colour.
+- Preview panel listing the selected try's contents, directories
+  first.
+- Disk panel showing used and free space for the filesystem holding
+  the tries root. Degrades to "unavailable" on Windows, where `df`
+  does not exist.
+
 - Standalone application build via
   [PackageCompiler.jl](https://github.com/JuliaLang/PackageCompiler.jl).
   `julia --project=build build/build.jl` produces a self-contained
