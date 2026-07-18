@@ -93,6 +93,7 @@ changelogs, and traceability matrices can reference them.
 - **UN6.** If the terminal width is below 40 columns or the height is below 10 rows, then the system shall abort the selector with exit code `64` and message `terminal too small (min 40×10)`.
 - **UN7.** If `Ctrl-C` is pressed at any point, then the system shall restore the terminal to its original mode before exiting with code `130`.
 - **UN8.** If the directory the selector chose no longer exists when the `cd` is about to be emitted, then the system shall suppress the `cd` and report why. (Added 2026-07-18: deletions are deferred until after the selector exits but run before the `cd` is written, so confirming a deletion for the highlighted try made the caller's shell fail its `eval`.)
+- **UN10.** If a try being deleted is a linked git worktree, then the system shall unregister it from its parent repository before removing the directory, and shall remove the directory even if that unregistration fails. (Added 2026-07-18: an unconditional `rm -rf` left the worktree in `git worktree list` marked `prunable`, with its admin directory still under `.git/worktrees`. Matches `try-rs`, which branches on the same condition.)
 - **UN9.** If an alias named `tryit` already exists in the caller's shell, then the shell function emitted by `tryit init` shall still install. (Added 2026-07-18: zsh expands aliases while *parsing* a function definition, so the definition was a syntax error and the whole `eval` aborted, silently leaving the previous command in place.)
 
 ---

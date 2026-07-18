@@ -103,6 +103,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Deleting a try that is a linked git worktree used an unconditional
+  `rm -rf`, leaving it registered in its parent repository: `git
+  worktree list` kept showing it as `prunable` and its admin
+  directory survived under `.git/worktrees`. The worktree is now
+  unregistered with `git worktree remove` first, and the directory is
+  removed regardless of whether that succeeds. Found by comparing
+  against `try-rs`, which branches on the same condition.
+
 - Deleting the try under the cursor emitted a `cd` into the removed
   directory, so the caller's shell failed with
   `(eval):cd:1: no such file or directory`. Deletes run after the

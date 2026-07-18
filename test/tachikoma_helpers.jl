@@ -323,3 +323,16 @@ function render_selector(model, width::Int, height::Int)
                     for x in 1:width])
             for y in 1:height]
 end
+
+"""
+    run_quiet(cmd)
+
+Run `cmd` with stdout and stderr discarded, erroring if it fails.
+
+Fixture setup only — git's progress chatter would otherwise smear the
+test output.
+"""
+function run_quiet(cmd::Cmd)
+    run(pipeline(cmd; stdout=devnull, stderr=devnull))
+    return nothing
+end

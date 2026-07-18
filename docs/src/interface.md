@@ -252,6 +252,14 @@ type-then-open flow stays a single `Enter`.
 
 ## Deleting and `cd`
 
+Deleting a try that is a linked git worktree runs `git worktree
+remove` first, so the parent repository stops listing it and its
+admin directory under `.git/worktrees` is cleaned up. Removing the
+directory alone would leave the worktree registered and `prunable`.
+If the unregistration fails — the parent repository may be gone, or
+`git` may be absent — the directory is still removed.
+
+
 `Ctrl-D` flags a try; the deletion itself is deferred until the
 selector exits, so the confirmation prompt can be answered on a
 restored terminal. That ordering means the `cd` target may have been

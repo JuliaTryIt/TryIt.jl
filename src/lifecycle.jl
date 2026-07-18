@@ -108,14 +108,27 @@ operations). Returns the number of paths successfully removed.
 
 EARS coverage: ED10 / FR-037.
 """
+# EARS coverage: UN10.
 function execute_deletes!(paths)
     deleted = 0
     for path in paths
         try
+            isdir(path) || continue
+            # A linked worktree has to be unregistered from its parent
+            # repository, not just unlinked from the filesystem: `rm`
+            # alone leaves it in `git worktree list` and leaves its
+            # admin directory under `.git/worktrees`.
+            if is_worktree(path)
+                remove_worktree(path)
+            end
+            # Still remove whatever is left. `git worktree remove` may
+            # have failed — the parent repository can be gone, or git
+            # may be absent — and that is not a reason to leave the
+            # directory behind.
             if isdir(path)
                 rm(path; recursive=true, force=true)
-                deleted += 1
             end
+            deleted += 1
         catch err
             diag(:delete, string(path, ": ", _err_msg(err)))
         end

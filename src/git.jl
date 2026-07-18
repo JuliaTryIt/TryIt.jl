@@ -216,3 +216,42 @@ function _collapse_stderr(s::AbstractString)
     end
     return ""
 end
+
+"""
+Whether `path` is a linked git worktree rather than a plain directory
+or a normal repository.
+
+`git worktree add` writes `.git` as a *file* containing a gitdir
+pointer; a normal repository has a `.git` directory. That difference
+is the only reliable local signal, and it is the same one the
+selector's `:worktree` badge uses.
+"""
+function is_worktree(path::AbstractString)
+    dotgit = joinpath(path, ".git")
+    return isfile(dotgit)
+end
+
+"""
+Ask git to remove the worktree rooted at `path`.
+
+Returns `true` when git reports success. Deleting the directory
+outright leaves the worktree registered in its parent repository —
+`git worktree list` keeps showing it and the admin directory lingers
+under `.git/worktrees` — so this runs first and the caller falls back
+to a plain delete only if it fails.
+"""
+function remove_worktree(path::AbstractString)
+    git_available() || return false
+    return try
+        proc = run(
+            pipeline(
+                Cmd(`git -C $path worktree remove --force $path`);
+                stdout=devnull, stderr=devnull
+            );
+            wait=true
+        )
+        success(proc)
+    catch
+        false
+    end
+end
