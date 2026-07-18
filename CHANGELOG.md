@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   worktree, and submodule markers, each with its own legend colour.
 - Preview panel listing the selected try's contents, directories
   first.
+- `F9` toggles `.tach` screen recording, replacing the framework
+  binding that collided with rename.
 - Disk panel showing used and free space for the filesystem holding
   the tries root. Degrades to "unavailable" on Windows, where `df`
   does not exist.
@@ -39,6 +41,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `tryit init` could not install its shell function for users with an
+  existing `alias tryit=...` (common when migrating from `try-cli` or
+  `try-rs`). zsh expands aliases while *parsing* a function
+  definition, so the definition was a syntax error and the whole
+  `eval` aborted, silently leaving the old command in place — the
+  selector appeared to ignore selections because a different `tryit`
+  was running. The snippet now drops any conflicting alias and
+  defines the function through a nested `eval`, which is parsed only
+  after the `unalias` has executed. Emitting the `unalias` on a
+  preceding line is not sufficient: zsh parses the entire `eval`
+  string before running any of it.
+- Ctrl-R opened Tachikoma's `.tach` screen recorder instead of
+  renaming. The framework claims Ctrl+R in its default bindings and
+  intercepts it before `update!` runs. Recording is now disabled for
+  the selector and re-offered on `F9`, with a `● REC` indicator in
+  the help bar. See `upstream-bugs.md`.
 - `TriesPath` now resolves symlinks via `realpath` after ensuring the
   root exists. Previously it used only `abspath(normpath(...))`, so on
   macOS — where `/var` and `/tmp` are symlinks into `/private` — two

@@ -45,6 +45,66 @@ EARS coverage: ED1, ED2, ED3, ED4, ED12, SD1, UN7.
     preview::Vector{PreviewEntry} = PreviewEntry[]
     "Filesystem stats for the tries root. `nothing` when unavailable."
     disk::Union{Nothing, DiskStats} = nothing
+    "Terminal handed over by Tachikoma in `init!`. `nothing` in unit
+     tests, which drive `update!` without running the event loop.
+     Needed because the `.tach` recorder hangs off the terminal, not
+     the model."
+    terminal::Union{Nothing, Tachikoma.Terminal} = nothing
+end
+
+# Tachikoma's event loop claims Ctrl+R for `.tach` recording and
+# intercepts it before `update!` ever runs. The selector needs Ctrl-R
+# for rename — matching try-cli and try-rs — so the framework binding
+# is switched off and recording is re-offered on F9 below.
+#
+# F9 rather than Ctrl+Shift+R: `KeyEvent` carries no modifier fields,
+# and a legacy terminal sends the same 0x12 byte for Ctrl+R and
+# Ctrl+Shift+R, so the two are not distinguishable. Function keys
+# parse in both legacy and Kitty terminals.
+Tachikoma.recording_enabled(::SelectorSession) = false
+
+"""
+Capture the terminal so [`toggle_recording!`](@ref) can reach its
+`.tach` recorder.
+"""
+function Tachikoma.init!(m::SelectorSession, t::Tachikoma.Terminal)
+    m.terminal = t
+    return nothing
+end
+
+"""
+Whether a `.tach` recording is currently in progress.
+
+`false` when no terminal is attached, which is the case in unit tests
+that never enter the event loop.
+"""
+function recording_active(m::SelectorSession)
+    m.terminal === nothing && return false
+    return m.terminal.recorder.active
+end
+
+"""
+Start or stop `.tach` recording (F9).
+
+A no-op without an attached terminal. Uses only Tachikoma's exported
+recorder API — the framework's own countdown notification and export
+modal live in private app-loop state and are deliberately not
+reproduced; `start_recording!` still applies its 5-second countdown.
+"""
+function toggle_recording!(m::SelectorSession)
+    m.terminal === nothing && return nothing
+    rec = m.terminal.recorder
+    if rec.active
+        Tachikoma.stop_recording!(rec)
+        Tachikoma.clear_recording!(rec)
+    else
+        ts = Dates.format(Dates.now(), "yyyy-mm-dd_HHMMSS")
+        Tachikoma.start_recording!(
+            rec, m.terminal.size.width, m.terminal.size.height;
+            filename="tryit_$(ts).tach"
+        )
+    end
+    return nothing
 end
 
 """
@@ -170,6 +230,8 @@ function Tachikoma.update!(m::SelectorSession, evt::Tachikoma.KeyEvent)
         _handle_ctrl_g!(m)
     elseif key === :ctrl && evt.char == 'd'
         _handle_ctrl_d!(m)
+    elseif key === :f9
+        toggle_recording!(m)
     elseif key === :char && isprint(evt.char) && evt.char != '\0'
         m.filter *= evt.char
         refresh_visible!(m)
@@ -761,15 +823,21 @@ function _render_footer(m::SelectorSession, buf, area)
             Tachikoma.Span("Enter ", key), Tachikoma.Span("Select ", lbl),
             Tachikoma.Span("Ctrl-R ", key), Tachikoma.Span("Rename ", lbl),
             Tachikoma.Span("Ctrl-D ", key), Tachikoma.Span("Del ", lbl),
-            Tachikoma.Span("Ctrl-G ", key), Tachikoma.Span("Graduate ", lbl)
+            Tachikoma.Span("Ctrl-G ", key), Tachikoma.Span("Graduate ", lbl),
+            Tachikoma.Span("F9 ", key), Tachikoma.Span("Rec ", lbl)
         ]
     end
+    right = Tachikoma.Span[]
+    if recording_active(m)
+        # There is no framework notification for our F9 binding, so
+        # this indicator is the only signal that capture is running.
+        push!(right, Tachikoma.Span("● REC ", Tachikoma.tstyle(:error, bold=true)))
+    end
+    push!(right, Tachikoma.Span("Esc ", key))
+    push!(right, Tachikoma.Span("Quit ", lbl))
+
     Tachikoma.render(
-        Tachikoma.StatusBar(
-            left=left,
-            right=[Tachikoma.Span("Esc ", key), Tachikoma.Span("Quit ", lbl)]
-        ),
-        area, buf
+        Tachikoma.StatusBar(left=left, right=right), area, buf
     )
     return nothing
 end

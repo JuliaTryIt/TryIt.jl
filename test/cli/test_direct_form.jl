@@ -45,8 +45,11 @@ end
 
     (code, out, err) = run_cli_subprocess("init")
     @test code == 0
-    # Emitted shell function begins with `tryit()`.
-    @test occursin(r"^tryit\(\)\s*\{", out)
+    # The snippet clears any conflicting alias, then defines the
+    # function through a nested `eval` — zsh will not accept a bare
+    # definition while an alias of the same name exists.
+    @test occursin(r"^unalias tryit ", out)
+    @test occursin("eval 'tryit() {", out)
     # Contains an eval line to apply the cd command.
     @test occursin("eval", out)
     # Contains the tries-path fallback when no arg was given.

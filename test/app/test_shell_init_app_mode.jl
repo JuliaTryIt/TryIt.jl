@@ -17,8 +17,14 @@
         # It still has to behave like the interpreted form: emit a
         # command on stdout that the caller's shell evals.
         @test occursin("tryit() {", out)
-        @test occursin("eval \"\$__try_cmd\"", out)
-        @test occursin("TRY_PATH='/some/tries'", out)
+        @test occursin("__try_cmd", out)
+        # The definition is nested inside a quoted `eval`, so single
+        # quotes arrive escaped as `'\\''`. Assert the unwrapped text
+        # instead of trying to spell the escaping out here.
+        definition = TryIt._shell_function_text(
+            "/bin/tryit", "'/bin/tryit'", "missing", "'/some/tries'"
+        )
+        @test occursin("TRY_PATH='/some/tries'", definition)
 
         # Regression: the app bundle ships a `bin/julia` launcher
         # alongside `bin/tryit`, and `Base.julia_cmd()` reports the

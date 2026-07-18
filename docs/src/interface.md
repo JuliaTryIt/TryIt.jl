@@ -79,6 +79,33 @@ directory's badges do not change position between frames.
 | `Esc`          | Quit without changing directory            |
 | `Ctrl-C`       | Abort                                      |
 
+Ctrl-R is claimed by Tachikoma's default bindings for screen
+recording, which intercepts it before the selector sees it. TryIt
+disables that binding so Ctrl-R renames — matching `try-cli` and
+`try-rs` — and moves recording to `F9`, shown as `● REC` in the help
+bar while active. Ctrl+Shift+R was not an option: `KeyEvent` carries
+no modifier fields, and legacy terminals transmit the same byte for
+Ctrl+R and Ctrl+Shift+R. See `upstream-bugs.md`.
+
+## Shell integration
+
+`tryit init` emits a snippet that drops any conflicting `tryit` alias
+and then defines the shell function through a nested `eval`:
+
+```sh
+unalias tryit 2>/dev/null || true
+eval 'tryit() { ... }'
+```
+
+Both halves are load-bearing. Users migrating from `try-cli` or
+`try-rs` often have an `alias tryit=...` in their rc, and zsh expands
+aliases while *parsing* a function definition — the definition
+becomes a syntax error and the whole `eval` aborts, leaving the old
+command in place. Nesting the definition in its own `eval` defers its
+parsing until after the `unalias` has actually run; emitting the
+`unalias` on a preceding line does not work, because zsh parses the
+entire outer `eval` string before executing any of it.
+
 ## Performance notes
 
 The view is re-rendered on every frame, so the panels avoid repeating
