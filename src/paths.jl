@@ -130,7 +130,7 @@ EARS coverage: UB1, UB2, ED4, OF3.
 """
 function create_try(
         root::TriesPath, s::Slug,
-        today::Date=Dates.today()
+        today::Date=current_date()
 )
     base = try_basename(today, s)
     path = joinpath(root.root, base)
@@ -193,7 +193,7 @@ function list_tries(root::TriesPath)
             # let the selector render it differently.
             push!(
                 entries,
-                Try(full, _derive_slug(name), _local_date(stamp),
+                Try(full, _derive_slug(name), display_date(stamp),
                     stamp, String(name), false)
             )
         else
@@ -207,16 +207,6 @@ function list_tries(root::TriesPath)
     sort!(entries; by=t -> t.mtime, rev=true)
     return entries
 end
-
-"""
-Local calendar date of a unix timestamp.
-
-`unix2datetime` yields UTC, but every date TryIt *writes* comes from
-`Dates.today()`, which is local. Mixing them puts a folder touched
-shortly after midnight on the wrong day, and makes the date shown for
-an undated folder disagree with the prefix it would be given.
-"""
-_local_date(t::Real) = Date(Dates.unix2datetime(t) + (Dates.now() - Dates.now(Dates.UTC)))
 
 const _TRY_BASENAME_RE = r"^(\d{4})-(\d{2})-(\d{2})-(.+)$"
 
@@ -309,7 +299,7 @@ EARS coverage: ED11 / FR-026.
 """
 function placeholder_slug_for_today(
         root::TriesPath,
-        today::Date=Dates.today()
+        today::Date=current_date()
 )
     used = Set{Int}()
     for t in list_tries(root)

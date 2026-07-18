@@ -122,3 +122,40 @@ function save_settings(
     )
     return ok ? string("saved to ", path) : string("could not write ", path)
 end
+
+"""
+Environment variable overriding the date zone.
+"""
+const TIMEZONE_ENV = "TRY_TIMEZONE"
+
+"""
+Which clock dates are taken from: `:local` (default) or `:utc`.
+
+Anything unrecognised is treated as `:local` — a typo in a
+hand-edited config should cost a wrong date at worst.
+"""
+function date_zone(path::AbstractString=config_path())
+    raw = lowercase(_setting(TIMEZONE_ENV, "timezone", "local", path))
+    return raw == "utc" ? :utc : :local
+end
+
+"""
+Calendar date of the unix timestamp `t`, in the configured zone.
+
+Used for directories that carry no date prefix, where the filesystem
+mtime stands in for one.
+"""
+function display_date(t::Real, zone::Symbol=date_zone())
+    dt = Dates.unix2datetime(t)
+    zone === :utc && return Date(dt)
+    return Date(dt + (Dates.now() - Dates.now(Dates.UTC)))
+end
+
+"""
+Today's date in the configured zone.
+
+Every date TryIt *writes* comes from here, so that a prefix it stamps
+and a date it displays are read off the same clock.
+"""
+current_date(zone::Symbol=date_zone()) = zone === :utc ? Date(Dates.now(Dates.UTC)) :
+                                         Dates.today()

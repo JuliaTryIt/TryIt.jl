@@ -45,6 +45,11 @@ to use:
 ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 ```
 
+The question is skipped entirely when the two dates are equal — a
+folder touched today would otherwise offer the same date twice, and a
+prompt whose options are identical is friction with no decision
+behind it.
+
 Both dates are spelled out, because the whole reason to ask is that
 they differ. "Its own" is the mtime-derived date already shown in the
 row and is the default; "Today" suits a folder whose mtime says more
@@ -274,7 +279,14 @@ for whoever ran the build and failed for everyone else.
 ```toml
 theme = "dracula"
 animation = "plasma"
+timezone = "local"   # or "utc"
 ```
+
+`timezone` decides which clock every date is read from — both the
+prefixes TryIt writes and the dates it infers from filesystem mtimes.
+The two always agree, so a folder cannot be listed under one date and
+stamped with another. It defaults to `local`; an unrecognised value
+falls back to it.
 
 It is looked for at `$TRY_CONFIG`, then
 `$XDG_CONFIG_HOME/tryit/config.toml`, then

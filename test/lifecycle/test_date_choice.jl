@@ -5,7 +5,12 @@
 
     with_tmp_tries() do dir
         root = TryIt.TriesPath(positional=dir)
-        mkpath(joinpath(dir, "plain"))
+        target = joinpath(dir, "plain")
+        mkpath(target)
+        # The prompt only appears when the two dates differ, so the
+        # mtime has to be something other than today.
+        Sys.which("touch") === nothing && return
+        run(`touch -t 202001010900 $target`)
         m = TryIt.open_session(root)
         m.cursor = 1
 
@@ -25,7 +30,10 @@ end
 
     with_tmp_tries() do dir
         root = TryIt.TriesPath(positional=dir)
-        mkpath(joinpath(dir, "plain"))
+        target = joinpath(dir, "plain")
+        mkpath(target)
+        Sys.which("touch") === nothing && return
+        run(`touch -t 202001010900 $target`)
         m = TryIt.open_session(root)
         m.cursor = 1
         shown = m.visible[1].date
@@ -74,7 +82,10 @@ end
 
     with_tmp_tries() do dir
         root = TryIt.TriesPath(positional=dir)
-        mkpath(joinpath(dir, "plain"))
+        target = joinpath(dir, "plain")
+        mkpath(target)
+        Sys.which("touch") === nothing && return
+        run(`touch -t 202001010900 $target`)
         m = TryIt.open_session(root)
         m.cursor = 1
 
@@ -100,5 +111,48 @@ end
         press_keys!(m, "\x10")
         @test m.mode === :normal
         @test only(readdir(dir)) == "already"
+    end
+end
+
+@testitem "selector: no prompt when both dates are the same" begin
+    using Dates
+    using TryIt
+    using Tachikoma
+    include(joinpath(@__DIR__, "..", "tachikoma_helpers.jl"))
+
+    # A folder touched today offers "its own" and "today" as the same
+    # date. Asking to choose between two identical options is friction
+    # with no decision behind it.
+    with_tmp_tries() do dir
+        root = TryIt.TriesPath(positional=dir)
+        mkpath(joinpath(dir, "fresh"))
+        m = TryIt.open_session(root)
+        m.cursor = 1
+        @test m.visible[1].date == TryIt.current_date()
+
+        press_keys!(m, "\x10")
+        @test m.mode === :normal            # applied straight away
+        @test only(readdir(dir)) ==
+              string(Dates.format(Dates.today(), "yyyy-mm-dd"), "-fresh")
+    end
+end
+
+@testitem "selector: the prompt still appears when they differ" begin
+    using TryIt
+    using Tachikoma
+    include(joinpath(@__DIR__, "..", "tachikoma_helpers.jl"))
+
+    with_tmp_tries() do dir
+        root = TryIt.TriesPath(positional=dir)
+        old = joinpath(dir, "vintage")
+        mkpath(old)
+        Sys.which("touch") === nothing && return
+        run(`touch -t 202001010900 $old`)
+        m = TryIt.open_session(root)
+        m.cursor = 1
+        @test m.visible[1].date != TryIt.current_date()
+
+        press_keys!(m, "\x10")
+        @test m.mode === :datepick
     end
 end

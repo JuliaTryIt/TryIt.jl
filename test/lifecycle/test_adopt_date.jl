@@ -108,9 +108,10 @@ end
         m.cursor = 1
         @test m.visible[1].dated === false
 
-        press_keys!(m, "\x10")          # Ctrl-P — asks which date
-        @test m.mode === :datepick
-        press_keys!(m, "\r")            # take the default (its own)
+        # Created today, so both offered dates are the same and the
+        # prompt is skipped — see test_date_choice.jl.
+        press_keys!(m, "\x10")          # Ctrl-P
+        @test m.mode === :normal
         # Stays in the selector, list refreshed in place.
         @test m.done === false
         @test length(m.visible) == 1

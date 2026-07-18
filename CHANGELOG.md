@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `timezone` setting, `local` (default) or `utc`, deciding which clock
+  every date is read from — both the prefixes TryIt writes and the
+  dates it infers from mtimes, so the two always agree.
+
 - Development guide and `bin/resolve-envs.sh`. Three environments
   pin TryIt and each keeps its own `Manifest.toml`; none is updated
   by pulling a commit that changes dependencies, and the `@TryIt`

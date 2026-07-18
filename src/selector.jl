@@ -253,10 +253,15 @@ function _handle_ctrl_p!(m::SelectorSession)
     if !src.dated
         # Which date to stamp on is a real choice and it varies per
         # folder: an old clone picked up today wants today, an archive
-        # being filed wants its own mtime. Ask rather than guess.
-        m.date_choice = :mtime
-        m.mode = :datepick
-        return nothing
+        # being filed wants its own mtime. Ask rather than guess —
+        # but only when the two answers actually differ. A folder
+        # touched today offers the same date twice, and a prompt whose
+        # options are identical is pure friction.
+        if src.date != current_date()
+            m.date_choice = :mtime
+            m.mode = :datepick
+            return nothing
+        end
     end
     return _apply_date_toggle!(m, src, nothing)
 end
@@ -316,7 +321,7 @@ function _update_datepick!(m::SelectorSession, evt::Tachikoma.KeyEvent)
         m.mode = :normal
         (m.cursor >= 1 && m.cursor <= length(m.visible)) || return nothing
         src = m.visible[m.cursor]
-        _apply_date_toggle!(m, src, m.date_choice === :today ? Dates.today() : nothing)
+        _apply_date_toggle!(m, src, m.date_choice === :today ? current_date() : nothing)
     elseif key === :escape
         m.mode = :normal
     elseif key === :up || key === :left
@@ -1169,7 +1174,7 @@ function _render_datepick(m::SelectorSession, buf, area)
     (m.cursor >= 1 && m.cursor <= length(m.visible)) || return nothing
     src = m.visible[m.cursor]
     own = Dates.format(src.date, dateformat"yyyy-mm-dd")
-    today = Dates.format(Dates.today(), dateformat"yyyy-mm-dd")
+    today = Dates.format(current_date(), dateformat"yyyy-mm-dd")
 
     Tachikoma.render(
         Tachikoma.Modal(

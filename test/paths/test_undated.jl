@@ -43,7 +43,7 @@ end
         t = only(list_tries(root))
         # No prefix to read, so the OS mtime stands in — as a *local*
         # date, since every date TryIt writes comes from `today()`.
-        @test t.date == TryIt._local_date(mtime(target))
+        @test t.date == TryIt.display_date(mtime(target))
         @test t.mtime == mtime(target)
     end
 end
