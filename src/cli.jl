@@ -155,6 +155,16 @@ function _dispatch_worktree(args::AbstractVector{<:AbstractString})::Int
     return ExitCode.SUCCESS
 end
 
+"""
+Whether `path` is still a usable `cd` target.
+
+Guards the one-line shell contract (UB4): everything written to
+stdout is `eval`ed by the caller's shell, so emitting a `cd` into a
+directory that has been removed surfaces as a shell error rather than
+as anything TryIt can explain.
+"""
+emit_cd_for(path::AbstractString) = isdir(path)
+
 function _dispatch_selector_or_usage()::Int
     # UN6 guard BEFORE the TTY / alt-screen path: if the terminal is
     # below the 40×10 minimum, bail cleanly with a single diag.
@@ -180,6 +190,15 @@ function _dispatch_selector_or_usage()::Int
         end
     end
     if session.exit_action === :cd
+        # The deletes above ran *after* the selector chose its target,
+        # so that target may no longer exist — marking the try under
+        # the cursor and confirming is an easy way to get there. A
+        # `cd` into a removed directory makes the caller's shell fail
+        # on the eval, which looks like a TryIt crash.
+        if !emit_cd_for(session.exit_path)
+            diag(:cd, string(session.exit_path, ": no longer exists"))
+            return ExitCode.SUCCESS
+        end
         println(stdout, "cd ", _shell_quote(session.exit_path))
         flush(stdout)
         spawn_editor(session.exit_path)

@@ -55,6 +55,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Deleting the try under the cursor emitted a `cd` into the removed
+  directory, so the caller's shell failed with
+  `(eval):cd:1: no such file or directory`. Deletes run after the
+  selector picks its target but before the `cd` is written, so the
+  target could already be gone. The `cd` is now suppressed with a
+  diagnostic when its target is no longer a directory — which also
+  covers a try removed by another process while the selector is open.
+
 - Building the standalone app created warm-up directories inside the
   building user's *real* tries root. `build/precompile_app.jl` drove
   the direct form, which takes no path argument and so resolved

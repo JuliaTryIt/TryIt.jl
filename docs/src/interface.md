@@ -199,6 +199,20 @@ try, quitting with `Esc`, and aborting with `Ctrl-C`. Writing the file
 is what `stop_recording!` does, so a capture left running would
 otherwise be discarded.
 
+## Deleting and `cd`
+
+`Ctrl-D` flags a try; the deletion itself is deferred until the
+selector exits, so the confirmation prompt can be answered on a
+restored terminal. That ordering means the `cd` target may have been
+removed in between — flagging the try under the cursor and confirming
+is the easy way to get there.
+
+When that happens the `cd` is suppressed and a diagnostic is written
+to stderr instead. Emitting it anyway would make the caller's shell
+fail the `eval` with `no such file or directory`, which reads like a
+crash in TryIt rather than the deletion you asked for. The same guard
+covers a try removed by another process while the selector is open.
+
 ## Performance notes
 
 The view is re-rendered on every frame, so the panels avoid repeating
