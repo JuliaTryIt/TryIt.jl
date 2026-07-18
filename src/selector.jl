@@ -39,6 +39,10 @@ EARS coverage: ED1, ED2, ED3, ED4, ED12, SD1, UN7.
      stderr for the whole TUI session, so `diag` output from inside
      `update!` is invisible — failures have to be surfaced in-frame."
     notice::String = ""
+    "Cursor into `Tachikoma.ALL_THEMES` while in `:theme`."
+    theme_index::Int = 1
+    "Theme active when the picker opened, restored if it is cancelled."
+    theme_before::String = ""
     "Input line contents while in `:rename`. Empty otherwise."
     rename_buf::String = ""
     "Absolute paths flagged for delete on selector exit (ED9 / ED10)."
@@ -187,6 +191,43 @@ function refresh_panels!(m::SelectorSession)
 end
 
 """
+Open the theme picker (Ctrl-T), remembering the current theme.
+"""
+function _open_theme_picker!(m::SelectorSession)
+    current = Tachikoma.theme().name
+    m.theme_before = current
+    idx = findfirst(==(current), theme_names())
+    m.theme_index = idx === nothing ? 1 : idx
+    m.mode = :theme
+    return nothing
+end
+
+"""
+Theme-picker reducer.
+
+Moving the cursor applies the theme immediately: the only way to
+judge one is to see it. `Esc` therefore has to restore whatever was
+active when the picker opened, or previewing would be a one-way door.
+"""
+function _update_theme!(m::SelectorSession, evt::Tachikoma.KeyEvent)
+    names = theme_names()
+    key = evt.key
+    if key === :enter
+        m.mode = :normal
+    elseif key === :escape
+        apply_theme!(m.theme_before)
+        m.mode = :normal
+    elseif key === :up
+        m.theme_index = max(1, m.theme_index - 1)
+        apply_theme!(names[m.theme_index])
+    elseif key === :down
+        m.theme_index = min(length(names), m.theme_index + 1)
+        apply_theme!(names[m.theme_index])
+    end
+    return nothing
+end
+
+"""
 Show `msg` in the help bar until the next keystroke.
 
 Replaces [`diag`](@ref) for failures raised from inside `update!`.
@@ -274,9 +315,13 @@ function Tachikoma.update!(m::SelectorSession, evt::Tachikoma.KeyEvent)
         _update_choose!(m, evt)
         return nothing
     end
-    if m.mode === :help
-        # Any key dismisses; the overlay is reference material, not a
-        # prompt, so trapping the user behind one specific key would
+    if m.mode === :theme
+        _update_theme!(m, evt)
+        return nothing
+    end
+    if m.mode === :help || m.mode === :about
+        # Any key dismisses; these are reference material, not
+        # prompts, so trapping the user behind one specific key would
         # only be a hazard.
         m.mode = :normal
         return nothing
@@ -313,8 +358,12 @@ function Tachikoma.update!(m::SelectorSession, evt::Tachikoma.KeyEvent)
         vr = _visible_rows(m)
         m.cursor = clamp(m.cursor + vr, 1, max(1, length(m.visible)))
         _scroll_after_cursor_move!(m)
+    elseif key === :ctrl && evt.char == 'n'
+        _handle_ctrl_n!(m)
     elseif key === :ctrl && evt.char == 't'
-        _handle_ctrl_t!(m)
+        _open_theme_picker!(m)
+    elseif key === :ctrl && evt.char == 'a'
+        m.mode = :about
     elseif key === :ctrl && evt.char == 'r'
         _handle_ctrl_r!(m)
     elseif key === :ctrl && evt.char == 'g'
@@ -544,7 +593,7 @@ Does NOT set `m.done` — the selector stays open (FR-026).
 
 EARS coverage: ED11 / FR-026.
 """
-function _handle_ctrl_t!(m::SelectorSession)
+function _handle_ctrl_n!(m::SelectorSession)
     s = placeholder_slug_for_today(m.root)
     new_try = create_try(m.root, s)
     # Re-snapshot so the selector's list of tries includes the new one.
@@ -784,6 +833,8 @@ function Tachikoma.view(m::SelectorSession, f::Tachikoma.Frame)
     # paint across would defeat the point of asking.
     m.mode === :choose && _render_choice(m, buf, f.area)
     m.mode === :help && _render_help(m, buf, f.area)
+    m.mode === :theme && _render_theme_picker(m, buf, f.area)
+    m.mode === :about && _render_about(m, buf, f.area)
     return nothing
 end
 
@@ -797,20 +848,112 @@ help overlay is private to its app loop, so it cannot be reused.
 const HELP_KEYS = [
     ("↑ / ↓", "Move the cursor"),
     ("Enter", "Open the highlighted try, or create one"),
-    ("Ctrl-T", "Create a new dated try"),
+    ("Ctrl-N", "Create a new dated try"),
+    ("Ctrl-T", "Theme picker"),
+    ("Ctrl-A", "About"),
     ("Ctrl-R", "Rename the highlighted try"),
     ("Ctrl-D", "Flag the highlighted try for deletion"),
     ("Ctrl-G", "Graduate: drop the date, move out of the tries root"),
     ("F9", "Start / stop .tach screen recording"),
     ("?", "This help"),
     ("Esc", "Quit without changing directory"),
-    ("Ctrl-C", "Abort"),
-    ("", ""),
-    ("Ctrl-\\\\", "Theme picker"),
-    ("Ctrl-S", "Settings: background brightness, speed"),
-    ("Ctrl-A", "Toggle animations"),
-    ("Ctrl-Y", "Copy the visible region")
+    ("Ctrl-C", "Abort")
 ]
+
+"""
+Draw the theme picker (Ctrl-T).
+"""
+function _render_theme_picker(m::SelectorSession, buf, area)
+    names = theme_names()
+    height = min(length(names) + 2, max(5, area.height - 2))
+    width = min(area.width - 4, 34)
+    (width < 14 || height < 5) && return nothing
+
+    box = Tachikoma.Rect(
+        area.x + div(area.width - width, 2),
+        area.y + max(0, div(area.height - height, 2)),
+        width, height
+    )
+    _blank_area!(m, buf, box)
+
+    rows = max(1, height - 2)
+    # Keep the highlighted theme on screen when the list is longer
+    # than the box.
+    offset = clamp(m.theme_index - div(rows, 2), 1, max(1, length(names) - rows + 1))
+    items = Tachikoma.ListItem[
+                               Tachikoma.ListItem(names[i], Tachikoma.tstyle(:text))
+                               for i in 1:length(names)
+                               ]
+    Tachikoma.render(
+        Tachikoma.SelectableList(
+            items;
+            selected=m.theme_index,
+            offset=offset - 1,
+            focused=true,
+            block=Tachikoma.Block(
+                title="Theme",
+                title_right=string(m.theme_index, "/", length(names)),
+                title_style=Tachikoma.tstyle(:title, bold=true),
+                border_style=Tachikoma.tstyle(:accent, bold=true)
+            ),
+            highlight_style=Tachikoma.tstyle(:accent, bold=true)
+        ),
+        box, buf
+    )
+    return nothing
+end
+
+"""
+Draw the About overlay (Ctrl-A).
+"""
+function _render_about(m::SelectorSession, buf, area)
+    lines = [
+        ("TryIt.jl", Tachikoma.tstyle(:title, bold=true)),
+        (string("version ", ABOUT_VERSION), Tachikoma.tstyle(:text_dim)),
+        ("", Tachikoma.tstyle(:text)),
+        ("Ephemeral-workspace manager for Julia.", Tachikoma.tstyle(:text)),
+        ("", Tachikoma.tstyle(:text)),
+        ("Inspired by:", Tachikoma.tstyle(:text_dim)),
+        ("  try-cli  github.com/tobi/try-cli", Tachikoma.tstyle(:text)),
+        ("  try-rs   github.com/tassiovirginio/try-rs", Tachikoma.tstyle(:text)),
+        ("", Tachikoma.tstyle(:text)),
+        ("TUI built on Tachikoma.jl", Tachikoma.tstyle(:text_dim)),
+        ("MIT licensed", Tachikoma.tstyle(:text_dim))
+    ]
+    height = length(lines) + 2
+    width = min(area.width - 4, 52)
+    (width < 20 || area.height < height) && return nothing
+
+    box = Tachikoma.Rect(
+        area.x + div(area.width - width, 2),
+        area.y + max(0, div(area.height - height, 2)),
+        width, height
+    )
+    _blank_area!(m, buf, box)
+    inner = Tachikoma.render(
+        Tachikoma.Block(
+            title="About",
+            title_right="any key closes",
+            title_style=Tachikoma.tstyle(:title, bold=true),
+            border_style=Tachikoma.tstyle(:accent, bold=true)
+        ),
+        box, buf
+    )
+    (inner.width <= 0 || inner.height <= 0) && return nothing
+    for (i, (text, style)) in enumerate(lines)
+        i > inner.height && break
+        Tachikoma.set_string!(
+            buf, inner.x, inner.y + i - 1, _pad(text, inner.width), style)
+    end
+    return nothing
+end
+
+"""
+Version string shown in the About overlay.
+"""
+const ABOUT_VERSION = let v = pkgversion(@__MODULE__)
+    v === nothing ? "unknown" : string(v)
+end
 
 """
 Draw the `?` key-binding overlay.
@@ -1140,15 +1283,34 @@ function _render_footer(m::SelectorSession, buf, area)
             Tachikoma.Span("Esc ", key), Tachikoma.Span("Cancel ", lbl)
         ]
     else
-        [
-            Tachikoma.Span(" ↑↓ ", key), Tachikoma.Span("Nav ", lbl),
-            Tachikoma.Span("Enter ", key), Tachikoma.Span("Select ", lbl),
-            Tachikoma.Span("Ctrl-R ", key), Tachikoma.Span("Rename ", lbl),
-            Tachikoma.Span("Ctrl-D ", key), Tachikoma.Span("Del ", lbl),
-            Tachikoma.Span("Ctrl-G ", key), Tachikoma.Span("Graduate ", lbl),
-            Tachikoma.Span("F9 ", key), Tachikoma.Span("Rec ", lbl),
-            Tachikoma.Span("? ", key), Tachikoma.Span("Help ", lbl)
+        # Mirrors try-rs's bar: pipe-separated, key in accent,
+        # action dimmed. F9 lives in `?` help only — screen recording
+        # is not something you reach for often enough to spend a slot
+        # on, and the bar already truncates below ~80 columns.
+        sep = Tachikoma.Span(" | ", Tachikoma.tstyle(:border))
+        # StatusBar clips rather than wraps, so a fixed list loses its
+        # tail — at 100 columns that silently ate "Esc Quit", and at 80
+        # it cut mid-word. Bindings are dropped in reverse order of how
+        # often they are reached for; `?` survives every tier, because
+        # the overlay is where the dropped ones are still documented.
+        entries = [
+            ("↑↓ ", "Nav"), ("Enter ", "Select"), ("Ctrl+D ", "Del"),
+            ("Ctrl+R ", "Rename"), ("Ctrl+G ", "Graduate"),
+            ("Ctrl+T ", "Theme"), ("Ctrl+A ", "About")
         ]
+        keep = area.width >= 118 ? 7 :
+               area.width >= 100 ? 5 :
+               area.width >= 78 ? 4 : 2
+        spans = Tachikoma.Span[Tachikoma.Span(" ", lbl)]
+        for (i, (k, action)) in enumerate(entries[1:min(keep, end)])
+            i > 1 && push!(spans, sep)
+            push!(spans, Tachikoma.Span(k, key))
+            push!(spans, Tachikoma.Span(action, lbl))
+        end
+        push!(spans, sep)
+        push!(spans, Tachikoma.Span("? ", key))
+        push!(spans, Tachikoma.Span("Help", lbl))
+        spans
     end
     right = Tachikoma.Span[]
     if recording_active(m)

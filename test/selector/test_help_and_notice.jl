@@ -40,7 +40,7 @@ end
     end
 end
 
-@testitem "selector: help lists both TryIt and framework bindings" begin
+@testitem "selector: help lists the whole keymap" begin
     using TryIt
     using Tachikoma
     include(joinpath(@__DIR__, "..", "tachikoma_helpers.jl"))
@@ -52,7 +52,10 @@ end
         press_keys!(m, "?")
 
         text = join(render_selector(m, 92, 26), "\n")
-        for key in ("Enter", "Ctrl-R", "Ctrl-G", "Ctrl-D", "F9", "Ctrl-\\")
+        # The selector owns the keymap now (default_bindings=false),
+        # so the overlay is the only place these are written down.
+        for key in ("Enter", "Ctrl-N", "Ctrl-T", "Ctrl-A", "Ctrl-R",
+            "Ctrl-G", "Ctrl-D", "F9", "?")
             @test occursin(key, text)
         end
     end

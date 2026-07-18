@@ -179,7 +179,12 @@ function _dispatch_selector_or_usage()::Int
     end
     root = TriesPath()
     session = open_session(root)
-    app(session)
+    # We own the keymap: Tachikoma's defaults claim Ctrl+A, Ctrl+T's
+    # neighbours, and Ctrl+R, intercepting them before `update!` runs,
+    # and only the recording binding has an opt-out. Matching try-rs
+    # (Ctrl+T theme, Ctrl+A about, Ctrl+R rename) means taking all of
+    # them and providing our own theme, about, and help overlays.
+    app(session; default_bindings=false)
     # Tachikoma has exited by now; terminal is restored, stdout is live.
     # Run the deferred-delete confirmation BEFORE emitting any `cd` so the
     # prompt on stderr precedes the shell-evaluable output on stdout

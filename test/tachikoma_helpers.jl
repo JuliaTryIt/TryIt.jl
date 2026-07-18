@@ -70,8 +70,17 @@ function press_keys!(model, keys::AbstractString)
             _press!(model, :ctrl, 'r')
             i = nextind(keys, i)
         elseif c == '\x14'
-            # Ctrl-T (NAK-adjacent) — v0.2 placeholder-create binding.
+            # Ctrl-T — theme picker (was placeholder-create until the
+            # keymap moved to match try-rs).
             _press!(model, :ctrl, 't')
+            i = nextind(keys, i)
+        elseif c == '\x0e'
+            # Ctrl-N — placeholder-create binding.
+            _press!(model, :ctrl, 'n')
+            i = nextind(keys, i)
+        elseif c == '\x01'
+            # Ctrl-A — About overlay.
+            _press!(model, :ctrl, 'a')
             i = nextind(keys, i)
         elseif c == '\x15'
             # Synthetic Page-Up (test-internal shortcut).

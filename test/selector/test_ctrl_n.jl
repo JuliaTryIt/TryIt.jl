@@ -1,4 +1,4 @@
-@testitem "selector: Ctrl-T creates placeholder and stays open (ED11)" begin
+@testitem "selector: Ctrl-N creates placeholder and stays open (ED11)" begin
     using Dates
     using TryIt: TriesPath, slug, create_try, open_session
     include(joinpath(@__DIR__, "..", "tachikoma_helpers.jl"))
@@ -12,7 +12,7 @@
     session = open_session(root)
     prev_count = length(session.all_tries)
 
-    press_keys!(session, "\x14")          # Ctrl-T
+    press_keys!(session, "\x0e")          # Ctrl-N
 
     @test session.done === false          # selector stays open
     @test session.exit_action === :none
@@ -27,7 +27,7 @@
     @test endswith(session.visible[session.cursor].slug.value, "new-try")
 end
 
-@testitem "selector: second Ctrl-T makes new-try-1 (ED11)" begin
+@testitem "selector: second Ctrl-N makes new-try-1 (ED11)" begin
     using TryIt: TriesPath, open_session
     include(joinpath(@__DIR__, "..", "tachikoma_helpers.jl"))
 
@@ -35,7 +35,7 @@ end
     root = TriesPath(positional=dir)
     session = open_session(root)
 
-    press_keys!(session, "\x14\x14")      # Ctrl-T twice
+    press_keys!(session, "\x0e\x0e")      # Ctrl-N twice
 
     slugs = [t.slug.value for t in session.all_tries]
     @test "new-try" in slugs
