@@ -44,7 +44,7 @@ jobs:
         # slug coverage is platform-independent.
         if: matrix.os == 'ubuntu-latest' && matrix.version == '1'
         run: julia --startup-file=no --project=. test/coverage/gate.jl
-      - uses: codecov/codecov-action@v4
+      - uses: codecov/codecov-action@v7
         with:
           files: lcov.info
           token: ${{ secrets.CODECOV_TOKEN }}
