@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `spec.md` reconciled with the implementation. Four requirements
+  amended (UB1 default path, ED3 narrowed, ED11 rebound to `Ctrl+N`,
+  NF1 dependency set), UB5 given an explicit TUI exception, and
+  twelve capabilities that existed without a written requirement now
+  have one: ED14–ED18, SD4–SD6, OF4, OF5, UN8, UN9. All 72
+  requirements trace to code.
+
 - Requirements traceability page documenting which EARS requirements
   are met, which have drifted, and what remains for v1.0.
 - Drift guards in the test suite: every requirement ID in `spec.md`

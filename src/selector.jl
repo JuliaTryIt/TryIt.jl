@@ -107,6 +107,8 @@ A no-op without an attached terminal. Uses only Tachikoma's exported
 recorder API — the framework's own countdown notification and export
 modal live in private app-loop state and are deliberately not
 reproduced; `start_recording!` still applies its 5-second countdown.
+
+EARS coverage: ED18.
 """
 function toggle_recording!(m::SelectorSession)
     t = m.terminal
@@ -192,6 +194,8 @@ end
 
 """
 Open the theme picker (Ctrl-T), remembering the current theme.
+
+EARS coverage: ED15.
 """
 function _open_theme_picker!(m::SelectorSession)
     current = Tachikoma.theme().name
@@ -632,6 +636,8 @@ beginning of an existing name — or any digits of the date prefix —
 selects that try and leaves no way to create the shorter name. The
 prompt only appears when the typed text is genuinely ambiguous: if it
 is already the highlighted try's exact slug, Enter opens it directly.
+
+EARS coverage: ED3, ED14.
 """
 function needs_choice(m::SelectorSession)
     (m.cursor >= 1 && m.cursor <= length(m.visible)) || return false
@@ -905,6 +911,8 @@ end
 
 """
 Draw the About overlay (Ctrl-A).
+
+EARS coverage: ED16.
 """
 function _render_about(m::SelectorSession, buf, area)
     lines = [
@@ -957,6 +965,8 @@ end
 
 """
 Draw the `?` key-binding overlay.
+
+EARS coverage: ED17.
 """
 function _render_help(m::SelectorSession, buf, area)
     rows = length(HELP_KEYS) + 2
@@ -1135,6 +1145,8 @@ end
 
 """
 Draw the stacked Disk / Preview / Legends column.
+
+EARS coverage: SD4.
 """
 function _render_side_column(m::SelectorSession, buf, area)
     legend_rows = cld(length(BADGE_ORDER), LEGEND_COLUMNS)
@@ -1260,6 +1272,8 @@ end
 
 """
 Draw the key-binding help bar.
+
+EARS coverage: SD5.
 """
 function _render_footer(m::SelectorSession, buf, area)
     key = Tachikoma.tstyle(:accent, bold=true)

@@ -14,7 +14,7 @@ When running as a compiled PackageCompiler app (see
 [`_APP_MODE`](@ref)), the emitted function calls the `tryit`
 executable directly instead of booting `julia`.
 
-EARS coverage: UB4, ED13.
+EARS coverage: UB4, ED13, UN9.
 """
 function emit_shell_init(
         io::IO,

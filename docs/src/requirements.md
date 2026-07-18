@@ -4,6 +4,11 @@ Traceability against the EARS specification, as of the current
 `main`. `spec.md` is not tracked in git; this page is the tracked
 summary of it.
 
+The spec was reconciled with the implementation on 2026-07-18: the
+four divergences below were resolved by amending the requirement, and
+twelve capabilities that had been built without a written requirement
+were given one. All 72 requirements are now traceable to code.
+
 Legend: **met** · **drift** (implemented, but differs from the
 written requirement) · **open** (not implemented) · **unmeasured**
 (no evidence either way).
@@ -32,7 +37,7 @@ shortcuts that `default_bindings=false` had switched off.
 
 | ID  | Status | Note                                                       |
 | --- | ------ | ---------------------------------------------------------- |
-| UB1 | drift  | Default is `$HOME/work/tries`, not `$HOME/src/tries` — follows `try-rs`; `try-cli` uses `src`. Spec text needs amending. |
+| UB1 | met    | Amended: default is `$HOME/work/tries`, following `try-rs`. `try-cli` uses `src`; the two upstreams disagree. |
 | UB2 | met    |                                                            |
 | UB3 | met    | 100 % line coverage enforced by `test/coverage/gate.jl`.   |
 | UB4 | met    |                                                            |
@@ -45,7 +50,7 @@ shortcuts that `default_bindings=false` had switched off.
 | ---- | ------ | --------------------------------------------------------- |
 | ED1  | met    |                                                            |
 | ED2  | met    |                                                            |
-| ED3  | drift  | Enter on a filter matching an existing try now *asks* open-or-create unless the filter is that try's exact slug. Without it, a name that is a substring of an existing one could never be created. |
+| ED3  | met    | Amended: narrowed to an exact-slug or empty filter. The ambiguous case is now ED14. |
 | ED4  | met    |                                                            |
 | ED5  | met    |                                                            |
 | ED6  | met    |                                                            |
@@ -53,33 +58,45 @@ shortcuts that `default_bindings=false` had switched off.
 | ED8  | met    | Same.                                                      |
 | ED9  | met    |                                                            |
 | ED10 | met    |                                                            |
-| ED11 | drift  | Bound to `Ctrl+N`, not `Ctrl+T`; `Ctrl+T` is the theme picker, matching `try-rs`. |
+| ED11 | met    | Amended to `Ctrl+N`; `Ctrl+T` is the theme picker (ED15), matching `try-rs`. |
 | ED12 | met    |                                                            |
-| ED13 | met    | Snippet now clears a conflicting alias first.              |
+| ED13 | met    | Snippet now clears a conflicting alias first (UN9).        |
+| ED14 | met    | Open-or-create prompt for an ambiguous filter.             |
+| ED15 | met    | Theme picker, `Ctrl+T`.                                    |
+| ED16 | met    | About overlay, `Ctrl+A`.                                   |
+| ED17 | met    | Key-map overlay, `?`.                                      |
+| ED18 | met    | `.tach` recording on `F9`, flushed on every exit path.     |
 
 !!! note "UB5 and the TUI"
     UB5 requires diagnostics on stderr. Tachikoma redirects stderr
     for the whole TUI session, so a `diag` call from inside a key
     handler reaches nobody — a failing `Ctrl+G` looked like a dead
     key. Selector-internal failures therefore render in the help bar
-    instead. Outside the TUI, UB5 holds unchanged. The spec should
-    record this exception.
+    instead. Outside the TUI, UB5 holds unchanged. The spec records
+    this as an explicit exception.
 
 ## State-driven, optional, unwanted
 
 | IDs       | Status | Note                                               |
 | --------- | ------ | -------------------------------------------------- |
 | SD1–SD3   | met    |                                                    |
+| SD4       | met    | Disk / Preview / Legends panels; dropped below 64 cols. |
+| SD5       | met    | Help bar drops bindings as the terminal narrows.    |
+| SD6       | met    | The selector owns the whole key map.               |
 | OF1–OF3   | met    |                                                    |
+| OF4       | met    | `TRY_THEME`.                                        |
+| OF5       | met    | `TRY_BACKGROUND`.                                   |
 | UN1       | met    |                                                    |
 | UN2       | met    | Implicit in `create_try` idempotence.              |
 | UN3–UN7   | met    |                                                    |
+| UN8       | met    | No `cd` into a directory that was just deleted.    |
+| UN9       | met    | Shell function installs over a conflicting alias.  |
 
 ## Non-functional
 
 | ID   | Status     | Note                                                |
 | ---- | ---------- | --------------------------------------------------- |
-| NF1  | drift      | `DocStringExtensions` is a runtime dep beyond the listed set. Either amend the spec or move it. |
+| NF1  | met        | Amended to include `DocStringExtensions` (required by NF7). `PackageCompiler` is build-only. |
 | NF2  | unmeasured | First-frame < 250 ms never benchmarked.             |
 | NF3  | unmeasured | 30 Hz render rate never benchmarked.                |
 | NF4  | met        | Whole suite runs headless.                          |
@@ -112,10 +129,10 @@ The spec scopes v1.0 as NF9–NF12, NF19–NF21, plus a polish pass and
 registration. NF11 and NF12 are done, so what remains is packaging
 automation and the spec reconciliation this page records.
 
-1. **Reconcile the spec with reality.** UB1, ED3, ED11, NF1 and the
-   UB5 exception are all deliberate divergences that the written
-   requirement no longer describes. Amend `spec.md`, and track it in
-   git so the traceability test runs in CI rather than skipping.
+1. ~~**Reconcile the spec with reality.**~~ Done 2026-07-18. One
+   thing remains: `spec.md` is still untracked, so the traceability
+   test *skips* in CI instead of running. Tracking it is what turns
+   this from a local check into a gate.
 2. **Add the missing automation** — `TagBot.yml` (NF19),
    `Register.yml` (NF20), `dependabot.yml` (NF21), `CITATION.bib`
    (NF9). Each is a file, not a design problem.

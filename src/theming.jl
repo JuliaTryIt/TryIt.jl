@@ -165,6 +165,8 @@ Resolve the animated background from the environment.
 Returns `nothing` when the user opted out, or when Tachikoma's global
 motion switch is off — respecting a reduced-motion preference matters
 more than our default.
+
+EARS coverage: OF5.
 """
 function background_from_env()
     Tachikoma.animations_enabled() || return nothing
@@ -198,6 +200,8 @@ end
 Apply the theme named by [`THEME_ENV`](@ref), if any.
 
 Returns whether a theme was applied.
+
+EARS coverage: OF4.
 """
 apply_theme_from_env!() = apply_theme!(get(ENV, THEME_ENV, ""))
 

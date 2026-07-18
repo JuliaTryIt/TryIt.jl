@@ -162,6 +162,8 @@ Guards the one-line shell contract (UB4): everything written to
 stdout is `eval`ed by the caller's shell, so emitting a `cd` into a
 directory that has been removed surfaces as a shell error rather than
 as anything TryIt can explain.
+
+EARS coverage: UN8.
 """
 emit_cd_for(path::AbstractString) = isdir(path)
 
@@ -179,7 +181,7 @@ function _dispatch_selector_or_usage()::Int
     end
     root = TriesPath()
     session = open_session(root)
-    # We own the keymap: Tachikoma's defaults claim Ctrl+A, Ctrl+T's
+    # SD6 — we own the keymap: Tachikoma's defaults claim Ctrl+A, Ctrl+T's
     # neighbours, and Ctrl+R, intercepting them before `update!` runs,
     # and only the recording binding has an opt-out. Matching try-rs
     # (Ctrl+T theme, Ctrl+A about, Ctrl+R rename) means taking all of
