@@ -130,6 +130,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Embedded documentation pages went stale silently. Julia invalidates
+  a precompiled image when an *included* source file changes, but a
+  file merely `read` is invisible to that machinery — so editing
+  `docs/src/*.md` left the in-app copy showing the previous text with
+  nothing to indicate it. Each page is now registered with
+  `include_dependency`. Caught by the staleness test rather than by
+  anyone noticing the wrong manual.
+
 - The selector listed only directories matching `YYYY-MM-DD-<slug>`,
   so anything else under the tries root was invisible — 8 of 12
   directories in a real tries path, including hand-cloned

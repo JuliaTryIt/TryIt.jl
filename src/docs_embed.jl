@@ -88,6 +88,12 @@ const DOC_PAGES = let
         # Absent during an unusual build (a source tarball without
         # docs, say) is not a reason to fail loading the package.
         isfile(path) || continue
+        # Julia invalidates a precompiled image when an *included*
+        # source file changes; a file merely `read` is invisible to
+        # that machinery. Without this, editing docs/src/*.md leaves
+        # the embedded copy stale and the app shows the old manual
+        # with nothing to indicate it.
+        include_dependency(path)
         push!(pages, (title, _expand_documenter_blocks(read(path, String), @__MODULE__)))
     end
     pages
