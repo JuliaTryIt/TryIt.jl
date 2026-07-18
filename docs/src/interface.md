@@ -73,7 +73,10 @@ directory's badges do not change position between frames.
 | -------------- | ------------------------------------------ |
 | `↑` / `↓`      | Move the cursor                            |
 | `Enter`        | `cd` into the selected try, or create one  |
-| `Ctrl-T`       | Create a new dated try                     |
+| `Ctrl-N`       | Create a new dated try                     |
+| `Ctrl-T`       | Theme picker                               |
+| `Ctrl-A`       | About                                      |
+| `?`            | Key-binding overlay                        |
 | `Ctrl-R`       | Rename the selected try                    |
 | `Ctrl-D`       | Flag the selected try for deletion         |
 | `Ctrl-G`       | Graduate the try to the projects directory |
@@ -81,37 +84,43 @@ directory's badges do not change position between frames.
 | `Esc`          | Quit without changing directory            |
 | `Ctrl-C`       | Abort                                      |
 
-### Framework bindings
+### The keymap is ours
 
-These come from Tachikoma rather than from TryIt, and are available
-in the selector alongside the keys above:
+TryIt runs the event loop with `default_bindings=false`, so the keys
+above are the whole keymap — Tachikoma's own shortcuts are not
+active.
 
-| Key      | Action                                              |
-| -------- | --------------------------------------------------- |
-| `Ctrl-\` | Theme picker — all 24 built-in themes               |
-| `Ctrl-S` | Settings — background brightness, saturation, speed |
-| `Ctrl-A` | Toggle animations on or off                         |
-| `Ctrl-/` | Help overlay                                        |
-| `Ctrl-Y` | Copy the visible region to the clipboard            |
+That is a consequence of matching `try-rs`. The framework claimed
+`Ctrl+A` for its animation toggle and `Ctrl+R` for screen recording,
+intercepting both before the selector's `update!` ran, and only the
+recording binding has a per-model opt-out
+(`recording_enabled`). Taking `Ctrl+A` for About therefore meant
+taking all of them, and providing our own theme picker, About, and
+`?` help overlays in exchange.
 
-Choices made through these overlays are persisted by Tachikoma via
-Preferences, so a theme picked with `Ctrl-\` survives across runs and
-takes precedence over `TRY_THEME` for the rest of the session.
+Two framework features are given up by that trade: the settings
+overlay (background brightness, saturation, speed) and clipboard copy
+of the visible region. Neither has a TryIt equivalent yet.
 
-`Ctrl-A` takes effect immediately — the selector re-checks the motion
-setting every frame, so switching animations off stops the background
-at once rather than at the next launch.
+`Ctrl+R` is rename, as in `try-cli` and `try-rs`. Screen recording
+moved to `F9` — it is not on the help bar, only in `?`. Ctrl+Shift+R
+was not an option: `KeyEvent` carries no modifier fields, and legacy
+terminals transmit the same byte for `Ctrl+R` and `Ctrl+Shift+R`. See
+`upstream-bugs.md`.
 
-One framework binding is deliberately unavailable. `Ctrl-R` normally
-toggles `.tach` screen recording, and Tachikoma intercepts it before
-the selector ever sees it — so TryIt switches that binding off, keeps
-`Ctrl-R` for rename (matching `try-cli` and `try-rs`), and moves
-recording to `F9`.
+### The help bar adapts to width
 
-Ctrl+Shift+R was not an option: `KeyEvent` carries no modifier
-fields, and legacy terminals transmit the same byte for `Ctrl-R` and
-`Ctrl+Shift+R`, so the two cannot be told apart. Function keys parse
-in both legacy and Kitty terminals. See `upstream-bugs.md`.
+`StatusBar` clips rather than wraps, so bindings are dropped as the
+terminal narrows — in reverse order of how often they are reached
+for. `?` and `Esc` survive every width, because `?` is where
+everything dropped is still written down.
+
+| Width  | Shown                                             |
+| ------ | ------------------------------------------------- |
+| ≥ 118  | All seven, plus `? Help`                          |
+| ≥ 100  | Through `Ctrl+G Graduate`                         |
+| ≥ 78   | Through `Ctrl+R Rename`                           |
+| < 78   | `↑↓ Nav`, `Enter Select`, `? Help`                |
 
 ## Shell integration
 
@@ -146,9 +155,11 @@ Dark: `kokaku` (default), `esper`, `motoko`, `kaneda`, `neuromancer`,
 Light: `paper`, `latte`, `solaris`, `sakura`, `ayu`, `frost`,
 `meadow`, `dune`, `lavender`, `overcast`.
 
-`Ctrl-\` opens the in-app theme picker, which overrides `TRY_THEME`
-for the rest of the session and is persisted by Tachikoma across
-runs. An unknown `TRY_THEME` is ignored rather than fatal.
+`Ctrl+T` opens the theme picker. Moving the cursor applies each
+theme immediately — the only way to judge one is to see it — so `Esc`
+restores whatever was active when the picker opened, and `Enter`
+keeps the highlighted one. It overrides `TRY_THEME` for the rest of
+the session. An unknown `TRY_THEME` is ignored rather than fatal.
 
 ## Animated background
 
@@ -179,10 +190,14 @@ without competing with the content, and panels can be blanked over it
 safely. The glyph backgrounds remain available and render full-bleed,
 matching Tachikoma's own demos.
 
-The background is skipped entirely when animations are switched off
-— at startup, or live with `Ctrl-A` — so a reduced-motion preference
-always wins over the default. `TRY_BACKGROUND=off` is the persistent
-equivalent.
+The background is skipped entirely when Tachikoma's motion setting
+is off, re-checked every frame, so a reduced-motion preference always
+wins over the default.
+
+!!! note
+    Nothing in TryIt currently *toggles* that setting: `Ctrl+A` used
+    to, and now opens About. Until a replacement binding exists, use
+    `TRY_BACKGROUND=off` to disable the animation.
 
 ## Screen recording
 

@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The selector owns its keymap (`default_bindings=false`), matching
+  `try-rs`: `Ctrl+T` theme picker, `Ctrl+A` About, `Ctrl+R` rename,
+  `?` key-binding overlay. Creating a dated placeholder try moves
+  from `Ctrl+T` to `Ctrl+N`. Tachikoma's settings overlay and
+  clipboard copy are given up in the trade — its bindings are
+  all-or-nothing apart from recording.
+- Theme picker applying each theme live as the cursor moves, with
+  `Esc` restoring the theme active when it opened.
+- Help bar restyled after `try-rs` and made responsive: `StatusBar`
+  clips rather than wraps, so a fixed list silently dropped
+  `Esc Quit` at 100 columns and cut mid-word at 80.
+
 - Open-or-create prompt. Filtering matches substrings of
   `"<date> <slug>"`, so typing the beginning of an existing name
   always opened that try and left no way to create the shorter name —

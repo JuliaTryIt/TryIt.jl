@@ -77,7 +77,7 @@ matching shell function, so the same command works for both.
 | `TRY_PROJECTS` | Graduation target (default`dirname($TRY_PATH)`) |
 | `TRY_EDITOR`   | Editor launched on a try                          |
 | `TRY_TEMPLATE` | Directory copied into each new try                |
-| `TRY_THEME`    | Startup theme, any of 24 (`Ctrl-\` picks live)    |
+| `TRY_THEME`    | Startup theme, any of 24 (`Ctrl+T` picks live)   |
 | `TRY_BACKGROUND` | Animated background: `wash` (default), `dotwave`, `phylo`, `clado`, `off` |
 | `TRY_BACKGROUND_PRESET` | Variant index for the glyph backgrounds |
 
