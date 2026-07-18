@@ -199,6 +199,42 @@ try, quitting with `Esc`, and aborting with `Ctrl-C`. Writing the file
 is what `stop_recording!` does, so a capture left running would
 otherwise be discarded.
 
+## Open or create
+
+Typing in **Search/New** filters the list. Pressing `Enter` then does
+one of three things:
+
+| Typed text                              | `Enter` does                  |
+| --------------------------------------- | ----------------------------- |
+| Nothing                                  | Opens the highlighted try     |
+| The highlighted try's exact name         | Opens it                      |
+| Matches something, but is not its name   | **Asks** open or create       |
+| Matches nothing                          | Creates a try with that name  |
+
+The prompt exists because filtering matches *substrings* of
+`"<date> <slug>"`. Without it, typing the beginning of an existing
+name always opened that try, so a shorter name could never be
+created: with `2026-07-18-help-me` present, `help` was uncreatable.
+The date is part of the haystack too, so `2026` matched every try of
+the year and no name starting with the year could be made either.
+
+```text
+┏━ Open or create? ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃                "help" matches 2 tries.                 ┃
+┃              Choose what Enter should do.              ┃
+┃    [ Open  2026-07-18-help-desk ]  [ Create  help ]    ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+```
+
+`←` / `→` (or `↑` / `↓`, or `Tab`) move between the actions, `Enter`
+confirms, `Esc` returns to editing with the typed text intact.
+Opening is the default and sits on the left. "Open" always names the
+*highlighted* try, so moving the cursor before pressing `Enter`
+changes which try the prompt offers.
+
+Typing a full existing name is treated as unambiguous, so the common
+type-then-open flow stays a single `Enter`.
+
 ## Deleting and `cd`
 
 `Ctrl-D` flags a try; the deletion itself is deferred until the

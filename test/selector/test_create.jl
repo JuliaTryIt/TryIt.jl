@@ -27,7 +27,13 @@ end
     banana = create_try(root, slug("banana"), Date(2026, 4, 19))
 
     session = open_session(root)
+    # "app" is a prefix of "apple", not its whole slug, so Enter now
+    # asks whether to open the match or create a try called "app".
+    # The second Enter takes the default, which is to open — so ED3's
+    # guarantee is unchanged, at the cost of one keystroke.
     press_keys!(session, "app\r")
+    @test session.mode === :choose
+    press_keys!(session, "\r")
 
     @test session.done === true
     @test session.exit_action === :cd

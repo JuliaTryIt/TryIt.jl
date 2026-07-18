@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Open-or-create prompt. Filtering matches substrings of
+  `"<date> <slug>"`, so typing the beginning of an existing name
+  always opened that try and left no way to create the shorter name —
+  with `2026-07-18-help-me` present, `help` was uncreatable, and
+  since the date is in the haystack, `2026` matched everything from
+  the year. `Enter` on an ambiguous filter now asks whether to open
+  the highlighted try or create one named after the typed text.
+  Opening is the default. Typing a full existing name still opens it
+  in a single keystroke. This is the same gap as `try-rs` issue #44.
+
 - Multi-panel selector TUI, modelled on the reference `try-rs`
   interface: bordered `Search/New`, `Folders`, `Disk`, `Preview`, and
   `Legends` panels, plus a key-binding help bar. The folder list now

@@ -30,8 +30,11 @@ EARS coverage: ED1, ED2, ED3, ED4, ED12, SD1, UN7.
     viewport_top::Int = 0
     "Current terminal dimensions `(rows, cols)`; refreshed on every redraw."
     terminal_size::Tuple{Int, Int} = (24, 80)
-    "Sub-mode: `:normal` (default) or `:rename` (Ctrl-R). SD2-masked in `:rename`."
+    "Sub-mode: `:normal` (default), `:rename` (Ctrl-R), or `:choose`
+     (open-or-create prompt). SD2-masked in `:rename`."
     mode::Symbol = :normal
+    "Highlighted action while in `:choose`: `:open` or `:create`."
+    choice::Symbol = :open
     "Input line contents while in `:rename`. Empty otherwise."
     rename_buf::String = ""
     "Absolute paths flagged for delete on selector exit (ED9 / ED10)."
@@ -249,6 +252,10 @@ function Tachikoma.update!(m::SelectorSession, evt::Tachikoma.KeyEvent)
         _update_rename!(m, evt)
         return nothing
     end
+    if m.mode === :choose
+        _update_choose!(m, evt)
+        return nothing
+    end
     # :normal mode below.
     if key === :enter
         _handle_enter!(m)
@@ -292,6 +299,31 @@ function Tachikoma.update!(m::SelectorSession, evt::Tachikoma.KeyEvent)
         m.filter *= evt.char
         refresh_visible!(m)
         _scroll_after_cursor_move!(m)
+    end
+    return nothing
+end
+
+"""
+Open-or-create reducer.
+
+Only the keys that move between the two actions, commit, or back out
+are honoured — every other key is swallowed so a stray keystroke
+cannot both dismiss the prompt and act on the selector underneath.
+"""
+function _update_choose!(m::SelectorSession, evt::Tachikoma.KeyEvent)
+    key = evt.key
+    if key === :enter
+        _commit_choice!(m)
+    elseif key === :escape
+        # Back to editing with the typed text intact — the user may
+        # have meant to keep narrowing the filter.
+        m.mode = :normal
+    elseif key === :up || key === :left
+        m.choice = :open
+    elseif key === :down || key === :right
+        m.choice = :create
+    elseif key === :tab
+        m.choice = m.choice === :open ? :create : :open
     end
     return nothing
 end
@@ -495,14 +527,76 @@ function _handle_ctrl_t!(m::SelectorSession)
     return nothing
 end
 
+"""
+The filter text normalised to a slug, or `nothing` when it is empty
+or cannot form one (pure punctuation).
+"""
+function _filter_slug(m::SelectorSession)
+    raw = strip(m.filter)
+    isempty(raw) && return nothing
+    return try
+        slug(raw).value
+    catch err
+        err isa ArgumentError ? nothing : rethrow()
+    end
+end
+
+"""
+Whether pressing Enter is ambiguous between opening the highlighted
+try and creating a new one from the filter text.
+
+`filter_tries` matches substrings of `"<date> <slug>"`, so typing the
+beginning of an existing name — or any digits of the date prefix —
+selects that try and leaves no way to create the shorter name. The
+prompt only appears when the typed text is genuinely ambiguous: if it
+is already the highlighted try's exact slug, Enter opens it directly.
+"""
+function needs_choice(m::SelectorSession)
+    (m.cursor >= 1 && m.cursor <= length(m.visible)) || return false
+    typed = _filter_slug(m)
+    typed === nothing && return false
+    return typed != m.visible[m.cursor].slug.value
+end
+
+"""
+Commit the highlighted choice from the open-or-create prompt.
+"""
+function _commit_choice!(m::SelectorSession)
+    m.mode = :normal
+    if m.choice === :open
+        m.exit_action = :cd
+        m.exit_path = m.visible[m.cursor].path
+        m.done = true
+        return nothing
+    end
+    return _create_from_filter!(m)
+end
+
 function _handle_enter!(m::SelectorSession)
     if !isempty(m.visible) && m.cursor >= 1 && m.cursor <= length(m.visible)
+        if needs_choice(m)
+            m.mode = :choose
+            m.choice = :open
+            return nothing
+        end
         m.exit_action = :cd
         m.exit_path = m.visible[m.cursor].path
         m.done = true
         return nothing
     end
     # No match → create today's try from the filter string (ED4).
+    return _create_from_filter!(m)
+end
+
+"""
+Create today's try from the filter text and select it.
+
+Shared by the no-match path and the `:create` branch of the
+open-or-create prompt, so both produce an identical try.
+
+EARS coverage: ED4.
+"""
+function _create_from_filter!(m::SelectorSession)
     raw = strip(m.filter)
     if isempty(raw)
         # Nothing typed: pressing Enter on an empty filter is a no-op.
@@ -653,6 +747,47 @@ function Tachikoma.view(m::SelectorSession, f::Tachikoma.Frame)
     _render_folders(m, buf, lrows[2])
 
     _render_footer(m, buf, footer_area)
+    # Last, and over the full frame: an overlay that panels could
+    # paint across would defeat the point of asking.
+    m.mode === :choose && _render_choice(m, buf, f.area)
+    return nothing
+end
+
+"""
+Draw the open-or-create prompt.
+
+Both concrete names are spelled out — the whole point is that the
+typed text and the matched try are *different*, so naming only one of
+them would leave the choice ambiguous.
+"""
+function _render_choice(m::SelectorSession, buf, area)
+    (m.cursor >= 1 && m.cursor <= length(m.visible)) || return nothing
+    matched = m.visible[m.cursor]
+    typed = something(_filter_slug(m), strip(m.filter))
+    n = length(m.visible)
+
+    Tachikoma.render(
+        Tachikoma.Modal(
+            title="Open or create?",
+            message=string(
+                '"', typed, "\" matches ", n, n == 1 ? " try" : " tries", ".",
+                "\nChoose what Enter should do."
+            ),
+            # Modal draws `cancel_label` on the left, so "Open" is the
+            # cancel slot: it is the default, and the left button is
+            # where the arrow keys and the eye both start. Mapping it
+            # to `confirm` instead put the default on the right while
+            # Left still selected it.
+            cancel_label=string("Open  ", basename(matched.path)),
+            confirm_label=string("Create  ", typed),
+            selected=m.choice === :open ? :cancel : :confirm,
+            cancel_style=Tachikoma.tstyle(:accent, bold=true),
+            confirm_style=Tachikoma.tstyle(:success, bold=true),
+            border_style=Tachikoma.tstyle(:accent, bold=true),
+            title_style=Tachikoma.tstyle(:title, bold=true)
+        ),
+        area, buf
+    )
     return nothing
 end
 
@@ -889,7 +1024,13 @@ Draw the key-binding help bar.
 function _render_footer(m::SelectorSession, buf, area)
     key = Tachikoma.tstyle(:accent, bold=true)
     lbl = Tachikoma.tstyle(:text_dim)
-    left = if m.mode === :rename
+    left = if m.mode === :choose
+        [
+            Tachikoma.Span(" ↑↓ ", key), Tachikoma.Span("Choose ", lbl),
+            Tachikoma.Span("Enter ", key), Tachikoma.Span("Confirm ", lbl),
+            Tachikoma.Span("Esc ", key), Tachikoma.Span("Back ", lbl)
+        ]
+    elseif m.mode === :rename
         [
             Tachikoma.Span(" Enter ", key), Tachikoma.Span("Apply ", lbl),
             Tachikoma.Span("Esc ", key), Tachikoma.Span("Cancel ", lbl)
