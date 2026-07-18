@@ -1,0 +1,136 @@
+# Requirements status
+
+Traceability against the EARS specification, as of the current
+`main`. `spec.md` is not tracked in git; this page is the tracked
+summary of it.
+
+Legend: **met** · **drift** (implemented, but differs from the
+written requirement) · **open** (not implemented) · **unmeasured**
+(no evidence either way).
+
+## How this stays honest
+
+Three mechanisms, all in the test suite, so drift fails CI rather
+than waiting to be noticed:
+
+- `test/spec/test_traceability.jl` — every requirement ID in
+  `spec.md` must appear in `src/` or `test/`, or be listed in an
+  exemption table with a reason. Stale exemptions fail too.
+- `test/spec/test_docs_sync.jl` — every `Ctrl+X` in the documented
+  key-binding tables must be a key the selector actually handles, and
+  must appear in the `?` overlay. The documented default tries root
+  must match `_resolve_tries_root`.
+- The usual gates: `Pkg.test()`, a zero-dead-cross-ref
+  `docs/make.jl`, and `JuliaFormatter --check`.
+
+The two docs-sync checks exist because that drift already happened
+twice: the bindings table kept listing `Ctrl-T` as create-new-try
+after it moved to `Ctrl-N`, and a section documented five Tachikoma
+shortcuts that `default_bindings=false` had switched off.
+
+## Ubiquitous
+
+| ID  | Status | Note                                                       |
+| --- | ------ | ---------------------------------------------------------- |
+| UB1 | drift  | Default is `$HOME/work/tries`, not `$HOME/src/tries` — follows `try-rs`; `try-cli` uses `src`. Spec text needs amending. |
+| UB2 | met    |                                                            |
+| UB3 | met    | 100 % line coverage enforced by `test/coverage/gate.jl`.   |
+| UB4 | met    |                                                            |
+| UB5 | met    | With one caveat — see the note under ED7/ED8 below.        |
+| UB6 | met    | `ExitCode.T`, a module-scoped enum.                        |
+
+## Event-driven
+
+| ID   | Status | Note                                                      |
+| ---- | ------ | --------------------------------------------------------- |
+| ED1  | met    |                                                            |
+| ED2  | met    |                                                            |
+| ED3  | drift  | Enter on a filter matching an existing try now *asks* open-or-create unless the filter is that try's exact slug. Without it, a name that is a substring of an existing one could never be created. |
+| ED4  | met    |                                                            |
+| ED5  | met    |                                                            |
+| ED6  | met    |                                                            |
+| ED7  | met    | Failures now surface in-frame, not on stderr.              |
+| ED8  | met    | Same.                                                      |
+| ED9  | met    |                                                            |
+| ED10 | met    |                                                            |
+| ED11 | drift  | Bound to `Ctrl+N`, not `Ctrl+T`; `Ctrl+T` is the theme picker, matching `try-rs`. |
+| ED12 | met    |                                                            |
+| ED13 | met    | Snippet now clears a conflicting alias first.              |
+
+!!! note "UB5 and the TUI"
+    UB5 requires diagnostics on stderr. Tachikoma redirects stderr
+    for the whole TUI session, so a `diag` call from inside a key
+    handler reaches nobody — a failing `Ctrl+G` looked like a dead
+    key. Selector-internal failures therefore render in the help bar
+    instead. Outside the TUI, UB5 holds unchanged. The spec should
+    record this exception.
+
+## State-driven, optional, unwanted
+
+| IDs       | Status | Note                                               |
+| --------- | ------ | -------------------------------------------------- |
+| SD1–SD3   | met    |                                                    |
+| OF1–OF3   | met    |                                                    |
+| UN1       | met    |                                                    |
+| UN2       | met    | Implicit in `create_try` idempotence.              |
+| UN3–UN7   | met    |                                                    |
+
+## Non-functional
+
+| ID   | Status     | Note                                                |
+| ---- | ---------- | --------------------------------------------------- |
+| NF1  | drift      | `DocStringExtensions` is a runtime dep beyond the listed set. Either amend the spec or move it. |
+| NF2  | unmeasured | First-frame < 250 ms never benchmarked.             |
+| NF3  | unmeasured | 30 Hz render rate never benchmarked.                |
+| NF4  | met        | Whole suite runs headless.                          |
+| NF5–NF8 | met     | SciML style, margin 92, enforced in CI.             |
+| NF9  | open       | TagBot, Register, Dependabot, Citation plugins absent. |
+| NF10 | open       | Not in the General registry.                        |
+| NF11 | met        | `[compat]` for every dep; `julia = "1.10"`.         |
+| NF12 | met        | `build/build.jl` produces a standalone executable.  |
+| NF13 | met        |                                                     |
+| NF14 | met        | Aqua, no broken checks.                             |
+| NF15 | met        | JET green.                                          |
+| NF16 | met        | Coverage gate in CI.                                |
+| NF17 | met        |                                                     |
+| NF18 | met        | 3 OS × 3 Julia versions.                            |
+| NF19 | open       | No `TagBot.yml`.                                    |
+| NF20 | open       | No `Register.yml`.                                  |
+| NF21 | open       | No `dependabot.yml`.                                |
+| NF22 | met        |                                                     |
+| NF23 | met        |                                                     |
+| NF24 | met        | Plus Interface, Standalone App, and this page.      |
+
+## Non-goals
+
+NG1–NG4 are all respected. NG4 (no public Julia API) is the reason
+`main` is the only export.
+
+## Path to v1.0
+
+The spec scopes v1.0 as NF9–NF12, NF19–NF21, plus a polish pass and
+registration. NF11 and NF12 are done, so what remains is packaging
+automation and the spec reconciliation this page records.
+
+1. **Reconcile the spec with reality.** UB1, ED3, ED11, NF1 and the
+   UB5 exception are all deliberate divergences that the written
+   requirement no longer describes. Amend `spec.md`, and track it in
+   git so the traceability test runs in CI rather than skipping.
+2. **Add the missing automation** — `TagBot.yml` (NF19),
+   `Register.yml` (NF20), `dependabot.yml` (NF21), `CITATION.bib`
+   (NF9). Each is a file, not a design problem.
+3. **Measure NF2 and NF3.** Both are numeric budgets with no
+   evidence attached. A benchmark that fails CI when first-frame
+   render regresses would turn two unmeasured claims into two met
+   ones.
+4. **Register** (NF10), which closes v1.0.
+
+Two things worth deciding before 1.0, neither currently in the spec:
+
+- **The animation toggle has no binding.** `Ctrl+A` used to toggle
+  motion and now opens About, so `TRY_BACKGROUND=off` is the only
+  route. A reduced-motion preference arguably deserves a key.
+- **The TUI has only been driven headlessly.** Every check is an
+  offscreen buffer assertion. Nobody has watched the animated
+  background, the theme picker, or the open-or-create prompt run at
+  30 Hz in a real terminal.

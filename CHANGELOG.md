@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Requirements traceability page documenting which EARS requirements
+  are met, which have drifted, and what remains for v1.0.
+- Drift guards in the test suite: every requirement ID in `spec.md`
+  must be referenced from `src/` or `test/` or carry a written
+  exemption, and every documented key binding must exist in the code
+  and appear in the `?` overlay. Both were verified to fail on
+  injected drift, not just to pass.
+
 - The selector owns its keymap (`default_bindings=false`), matching
   `try-rs`: `Ctrl+T` theme picker, `Ctrl+A` About, `Ctrl+R` rename,
   `?` key-binding overlay. Creating a dated placeholder try moves

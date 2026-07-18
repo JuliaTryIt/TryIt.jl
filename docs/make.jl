@@ -11,7 +11,8 @@ makedocs(
         "Selector Interface" => "interface.md",
         "Standalone App" => "standalone-app.md",
         "Reference" => "reference.md",
-        "Rationale" => "rationale.md"
+        "Rationale" => "rationale.md",
+        "Requirements" => "requirements.md"
     ],
     warnonly=[:missing_docs]
 )
