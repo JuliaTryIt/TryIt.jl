@@ -44,7 +44,7 @@ code. Intended to be invoked from the shell function emitted by
 
 EARS coverage: UB6.
 """
-main(args::AbstractVector{<:AbstractString}) = exit(cli_main(args))
+main(args::AbstractVector{<:AbstractString}) = exit(Int(cli_main(args)))
 
 # Precompile workload — warms the hottest paths at install time so
 # the first `tryit` invocation after precompile does not re-incur

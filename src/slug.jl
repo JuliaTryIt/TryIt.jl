@@ -22,7 +22,7 @@ Steps (FR-003 / UB3):
 
 Throws `ArgumentError("empty slug")` if the result would be empty.
 
-EARS coverage: UB3, UB6 (feeds `EXIT_USAGE`).
+EARS coverage: UB3, UB6 (feeds `ExitCode.USAGE`).
 """
 function slug(input::AbstractString)
     # NFKD normalise and strip combining marks in one call — handles

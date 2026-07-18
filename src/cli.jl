@@ -42,7 +42,7 @@ Dispatch table:
 
 EARS coverage: UB4, UB5, UB6, ED1, ED4, ED12, ED13, UN1, UN4, UN7.
 """
-function cli_main(args::AbstractVector{<:AbstractString})
+function cli_main(args::AbstractVector{<:AbstractString})::Int
     if length(args) >= 1 && args[1] == "init"
         return _dispatch_init(args)
     end
@@ -59,23 +59,23 @@ function cli_main(args::AbstractVector{<:AbstractString})
         return _dispatch_direct(args[1])
     end
     diag(:usage, string("unknown arguments: ", join(args, ' ')))
-    return EXIT_USAGE
+    return ExitCode.USAGE
 end
 
-function _dispatch_init(args::AbstractVector{<:AbstractString})
+function _dispatch_init(args::AbstractVector{<:AbstractString})::Int
     positional = length(args) >= 2 ? String(args[2]) : nothing
     emit_shell_init(stdout, positional)
-    return EXIT_SUCCESS
+    return ExitCode.SUCCESS
 end
 
-function _dispatch_direct(slug_arg::AbstractString)
+function _dispatch_direct(slug_arg::AbstractString)::Int
     local s::Slug
     try
         s = slug(slug_arg)
     catch err
         if err isa ArgumentError
             diag(:slug, _err_msg(err))
-            return EXIT_USAGE
+            return ExitCode.USAGE
         end
         rethrow()
     end
@@ -84,18 +84,18 @@ function _dispatch_direct(slug_arg::AbstractString)
     println(stdout, "cd ", _shell_quote(t.path))
     flush(stdout)
     spawn_editor(t.path)
-    return EXIT_SUCCESS
+    return ExitCode.SUCCESS
 end
 
-function _dispatch_clone(args::AbstractVector{<:AbstractString})
+function _dispatch_clone(args::AbstractVector{<:AbstractString})::Int
     # Shape: ["clone", url] or ["clone", url, name]
     if length(args) < 2 || length(args) > 3
         diag(:usage, "clone takes <url> [<name>]")
-        return EXIT_USAGE
+        return ExitCode.USAGE
     end
     if !git_available()
         diag(:git, "git not found")
-        return EXIT_NOT_FOUND
+        return ExitCode.NOT_FOUND
     end
     url = String(args[2])
     name_arg = length(args) == 3 ? String(args[3]) : nothing
@@ -106,7 +106,7 @@ function _dispatch_clone(args::AbstractVector{<:AbstractString})
     catch err
         if err isa ArgumentError
             diag(:clone, _err_msg(err))
-            return EXIT_USAGE
+            return ExitCode.USAGE
         end
         rethrow()
     end
@@ -118,18 +118,18 @@ function _dispatch_clone(args::AbstractVector{<:AbstractString})
     println(stdout, "cd ", _shell_quote(inv.dest))
     flush(stdout)
     spawn_editor(inv.dest)
-    return EXIT_SUCCESS
+    return ExitCode.SUCCESS
 end
 
-function _dispatch_worktree(args::AbstractVector{<:AbstractString})
+function _dispatch_worktree(args::AbstractVector{<:AbstractString})::Int
     # Shape: ["worktree", name]
     if length(args) != 2
         diag(:usage, "worktree takes <name>")
-        return EXIT_USAGE
+        return ExitCode.USAGE
     end
     if !git_available()
         diag(:git, "git not found")
-        return EXIT_NOT_FOUND
+        return ExitCode.NOT_FOUND
     end
     root = TriesPath()
     local inv::WorktreeInvocation
@@ -140,7 +140,7 @@ function _dispatch_worktree(args::AbstractVector{<:AbstractString})
             msg = _err_msg(err)
             subsystem = occursin("not inside", msg) ? :worktree : :worktree
             diag(subsystem, msg)
-            return EXIT_USAGE
+            return ExitCode.USAGE
         end
         rethrow()
     end
@@ -152,20 +152,20 @@ function _dispatch_worktree(args::AbstractVector{<:AbstractString})
     println(stdout, "cd ", _shell_quote(inv.dest))
     flush(stdout)
     spawn_editor(inv.dest)
-    return EXIT_SUCCESS
+    return ExitCode.SUCCESS
 end
 
-function _dispatch_selector_or_usage()
+function _dispatch_selector_or_usage()::Int
     # UN6 guard BEFORE the TTY / alt-screen path: if the terminal is
     # below the 40×10 minimum, bail cleanly with a single diag.
     size_err = check_min_terminal_size(stdout)
     if size_err !== nothing
         diag(:terminal, size_err)
-        return EXIT_USAGE
+        return ExitCode.USAGE
     end
     if !is_terminal(stdin)
         diag(:usage, "no TTY on stdin and no positional slug")
-        return EXIT_USAGE
+        return ExitCode.USAGE
     end
     root = TriesPath()
     session = open_session(root)
@@ -183,15 +183,15 @@ function _dispatch_selector_or_usage()
         println(stdout, "cd ", _shell_quote(session.exit_path))
         flush(stdout)
         spawn_editor(session.exit_path)
-        return EXIT_SUCCESS
+        return ExitCode.SUCCESS
     elseif session.exit_action === :quit
-        return EXIT_SUCCESS
+        return ExitCode.SUCCESS
     elseif session.exit_action === :interrupted
-        return EXIT_SIGINT
+        return ExitCode.SIGINT
     elseif session.exit_action === :usage_error
         diag(:slug, "empty slug")
-        return EXIT_USAGE
+        return ExitCode.USAGE
     else
-        return EXIT_SUCCESS
+        return ExitCode.SUCCESS
     end
 end

@@ -6,6 +6,12 @@
 TryIt.main
 ```
 
+## Exit statuses
+
+```@docs
+TryIt.ExitCode
+```
+
 ## Shell integration
 
 ```@docs

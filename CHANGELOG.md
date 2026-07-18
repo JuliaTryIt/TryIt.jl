@@ -53,6 +53,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Exit statuses moved from loose `const EXIT_*` integers to a
+  module-scoped enum, `ExitCode.T`, per the project's Julia enum
+  convention. Call sites read `ExitCode.USAGE` instead of
+  `EXIT_USAGE`, and the names no longer leak into `TryIt`. The
+  numeric values are unchanged — they are the process wire format.
+  The CLI dispatchers narrow to `::Int` rather than `::ExitCode.T`,
+  because `tryit clone` propagates git's own exit code verbatim
+  (FR-029) and that is an arbitrary integer outside the enum; the
+  enum names only the statuses TryIt itself originates.
 - README: removed links to `ROADMAP.md`, `SPEC.md`, and
   `specs/001-walking-skeleton/quickstart.md`, none of which are
   present in the repository; added `try-rs` alongside `try-cli` as

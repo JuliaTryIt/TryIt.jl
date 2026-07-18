@@ -9,7 +9,7 @@
 end
 
 @testitem "app: _app_main returns the CLI exit code as Cint" begin
-    using TryIt: _app_main, EXIT_SUCCESS, EXIT_USAGE
+    using TryIt: _app_main, ExitCode
 
     # `init` is the only subcommand that is pure stdout with no
     # filesystem or TTY dependency, so it is the safe smoke path.
@@ -18,14 +18,14 @@ end
             _app_main(["init", dir])
         end
         @test code isa Cint
-        @test code == Cint(EXIT_SUCCESS)
+        @test code == Cint(ExitCode.SUCCESS)
     end
 
     code = redirect_stderr(devnull) do
         _app_main(["definitely", "not", "a", "command"])
     end
     @test code isa Cint
-    @test code == Cint(EXIT_USAGE)
+    @test code == Cint(ExitCode.USAGE)
 end
 
 @testitem "app: _app_main flips the process into app mode" begin

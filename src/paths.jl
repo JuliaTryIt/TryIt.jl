@@ -20,7 +20,7 @@ end
 Construct a [`TriesPath`](@ref), auto-creating the root if absent.
 
 If the root cannot be created or is not writable by the current
-user, calls [`diag`](@ref) with the error and `exit(EXIT_PERMISSION)`
+user, calls [`diag`](@ref) with the error and `exit(Int(ExitCode.PERMISSION))`
 (FR-014 / UN1).
 """
 function TriesPath(; positional::Union{Nothing, AbstractString}=nothing)
@@ -54,7 +54,7 @@ function _ensure_writable(path::AbstractString)
         end
     catch err
         diag(:tries_path, string(path, ": ", _err_msg(err)))
-        exit(EXIT_PERMISSION)
+        exit(Int(ExitCode.PERMISSION))
     end
     # Probe writability by opening a tempfile; cleans up immediately.
     probe = joinpath(path, ".try-write-probe")
@@ -64,7 +64,7 @@ function _ensure_writable(path::AbstractString)
         end
     catch err
         diag(:tries_path, string(path, ": ", _err_msg(err)))
-        exit(EXIT_PERMISSION)
+        exit(Int(ExitCode.PERMISSION))
     finally
         try
             isfile(probe) && rm(probe; force=true)
@@ -233,7 +233,7 @@ Resolution order (SPEC glossary):
  2. `dirname(root.root)` (parent of the tries path).
 
 Auto-creates the target directory if absent. Fails with a diag +
-`exit(EXIT_PERMISSION)` if the target cannot be created or
+`exit(Int(ExitCode.PERMISSION))` if the target cannot be created or
 written to.
 
 EARS coverage: ED8 / FR-035.

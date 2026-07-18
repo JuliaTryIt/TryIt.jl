@@ -4,7 +4,7 @@ Terminal-side helpers that Tachikoma does not already cover.
 For v0.1 this is intentionally thin: Tachikoma brackets the
 alternate screen, raw mode, and cursor state itself (see the v0.1
 research notes on SIGINT). The only remaining responsibility is
-mapping the Tachikoma Ctrl-C key message to the `EXIT_SIGINT`
+mapping the Tachikoma Ctrl-C key message to the `ExitCode.SIGINT`
 process exit code.
 
 EARS coverage: UN7.

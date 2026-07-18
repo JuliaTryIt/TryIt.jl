@@ -1,45 +1,45 @@
 """
-Process exit status — success.
+Process exit statuses.
 
-EARS coverage: UB6.
+A dedicated module rather than loose constants: the names stay out of
+`TryIt`, `ExitCode.<TAB>` completes, and `ExitCode.T` gives call sites
+something to dispatch on.
+
+The values are the wire format — a shell reads them from `\$?` — so
+they are pinned explicitly rather than left to declaration order.
+
+| Value        | Code | Meaning                                      |
+|:------------ | ----:|:-------------------------------------------- |
+| `SUCCESS`    | 0    | Completed normally.                          |
+| `PERMISSION` | 2    | `TRY_PATH` not creatable or writable (UN1).  |
+| `USAGE`      | 64   | `EX_USAGE`: bad slug, subcommand, or non-TTY |
+|              |      | run with no positional slug (UN4).           |
+| `NOT_FOUND`  | 127  | A required dependency is absent from `PATH`  |
+|              |      | (`git`, UN5).                                |
+| `SIGINT`     | 130  | `128 + SIGINT`: Ctrl-C (UN7).                |
+
+`exit` takes an `Integer`, and an `@enum` is not one, so process-level
+callers convert explicitly: `exit(Int(ExitCode.PERMISSION))`.
+
+EARS coverage: UB6, UN1, UN4, UN5, UN7.
 """
-const EXIT_SUCCESS = 0
+module ExitCode
 
-"""
-Process exit status — permission / access error.
+@enum T::Int32 begin
+    SUCCESS = 0
+    PERMISSION = 2
+    USAGE = 64
+    NOT_FOUND = 127
+    SIGINT = 130
+end
 
-Emitted when `TRY_PATH` cannot be created or written to.
+# Base defines the `Int(::Enum)` constructor but not `convert`, so
+# without this a `::Int` return annotation on the CLI dispatchers
+# would raise a MethodError instead of narrowing. Not piracy — `T`
+# is ours.
+Base.convert(::Type{I}, e::T) where {I <: Integer} = I(e)
 
-EARS coverage: UB6, UN1.
-"""
-const EXIT_PERMISSION = 2
-
-"""
-Process exit status — usage / `EX_USAGE` error.
-
-Emitted for empty slugs, unknown subcommands, or non-TTY runs with
-no positional slug.
-
-EARS coverage: UB6, UN4.
-"""
-const EXIT_USAGE = 64
-
-"""
-Process exit status — required dependency not found on `PATH`.
-
-Reserved for `git` (v0.2). Declared here so `cli_main` can use the
-stable name.
-
-EARS coverage: UB6, UN5.
-"""
-const EXIT_NOT_FOUND = 127
-
-"""
-Process exit status — received SIGINT (Ctrl-C).
-
-EARS coverage: UB6, UN7.
-"""
-const EXIT_SIGINT = 130
+end
 
 """
 Write a single-line diagnostic to `stderr` in the canonical
