@@ -50,6 +50,12 @@ EARS coverage: ED1, ED2, ED3, ED4, ED12, SD1, UN7.
      Needed because the `.tach` recorder hangs off the terminal, not
      the model."
     terminal::Union{Nothing, Tachikoma.Terminal} = nothing
+    "Animated background, or `nothing` when opted out. Resolved once
+     at open — see [`background_from_env`](@ref)."
+    background::Union{Nothing, SelectorBackground} = nothing
+    "Frame counter driving the background animation. Tachikoma has no
+     tick event; `view` runs every frame and advances this itself."
+    tick::Int = 0
 end
 
 # Tachikoma's event loop claims Ctrl+R for `.tach` recording and
@@ -92,18 +98,62 @@ modal live in private app-loop state and are deliberately not
 reproduced; `start_recording!` still applies its 5-second countdown.
 """
 function toggle_recording!(m::SelectorSession)
-    m.terminal === nothing && return nothing
-    rec = m.terminal.recorder
+    t = m.terminal
+    t === nothing && return nothing
+    rec = t.recorder
     if rec.active
-        Tachikoma.stop_recording!(rec)
-        Tachikoma.clear_recording!(rec)
+        finish_recording!(rec)
     else
-        ts = Dates.format(Dates.now(), "yyyy-mm-dd_HHMMSS")
         Tachikoma.start_recording!(
-            rec, m.terminal.size.width, m.terminal.size.height;
-            filename="tryit_$(ts).tach"
+            rec, t.size.width, t.size.height;
+            filename=recording_path(m.root.root)
         )
     end
+    return nothing
+end
+
+"""
+Destination for a new `.tach` recording.
+
+Written under the tries root rather than the process's working
+directory: `tryit` is invoked from wherever the user happens to be,
+and Tachikoma's default would scatter recordings across the
+filesystem. The tries root is a known location that is already
+guaranteed to exist and be writable.
+"""
+function recording_path(root::AbstractString)
+    ts = Dates.format(Dates.now(), "yyyy-mm-dd_HHMMSS")
+    return joinpath(root, "tryit_$(ts).tach")
+end
+
+"""
+Stop `rec` and write its `.tach` file, if it is running.
+
+Returns the filename written, or `""` when nothing was recording.
+
+Split from [`toggle_recording!`](@ref) because it is also the exit
+path: `stop_recording!` is what performs the write, so a recording
+left running when the selector closes would otherwise be discarded.
+"""
+function finish_recording!(rec::Tachikoma.CastRecorder)
+    rec.active || return ""
+    name = Tachikoma.stop_recording!(rec)
+    Tachikoma.clear_recording!(rec)
+    return name
+end
+
+"""
+Flush a still-running recording when the event loop exits.
+
+Covers every way out of the selector — selecting a try, quitting with
+Esc, or aborting with Ctrl-C — none of which pass through
+[`toggle_recording!`](@ref). Tachikoma calls this after the terminal
+has been fully restored.
+"""
+function Tachikoma.cleanup!(m::SelectorSession)
+    t = m.terminal
+    t === nothing && return nothing
+    finish_recording!(t.recorder)
     return nothing
 end
 
@@ -166,6 +216,12 @@ EARS coverage: ED1.
 function open_session(root::TriesPath)
     m = SelectorSession(root=root)
     m.all_tries = list_tries(root)
+    # Config is read once here rather than per frame: `apply_theme!`
+    # mutates a Tachikoma global, and re-reading ENV every frame would
+    # fight the in-app theme picker (Ctrl-\), which is allowed to win
+    # for the rest of the session.
+    apply_theme_from_env!()
+    m.background = background_from_env()
     refresh_visible!(m)
     return m
 end
@@ -545,6 +601,19 @@ function Tachikoma.view(m::SelectorSession, f::Tachikoma.Frame)
     m.terminal_size = (f.area.height, f.area.width)
     refresh_panels!(m)
 
+    # Background first: there is no z-buffer, so compositing is purely
+    # draw-order. Foreground cells written with a `NoColor` background
+    # keep whatever the background left underneath, which is what lets
+    # the animation show through the panels.
+    # Bound to a local first: narrowing a *mutable field* does not
+    # carry into the call, so `m.background` stays
+    # `Union{Nothing,Background}` at the call site and JET flags it.
+    bg = m.background
+    if bg !== nothing
+        m.tick += 1
+        render_selector_background!(bg, buf, f.area, m.tick)
+    end
+
     rows = Tachikoma.split_layout(
         Tachikoma.Layout(
             Tachikoma.Vertical, [Tachikoma.Fill(), Tachikoma.Fixed(1)]),
@@ -591,6 +660,7 @@ The same box doubles as the rename prompt (SD2), signalled by the
 `✎` prefix and a distinct border colour.
 """
 function _render_search(m::SelectorSession, buf, area)
+    _blank_area!(m, buf, area)
     renaming = m.mode === :rename
     title = renaming ? "Rename" : "Search/New"
     prefix, content = renaming ? ("✎ ", m.rename_buf) : ("> ", m.filter)
@@ -616,6 +686,7 @@ end
 Draw the folder list: badge, date, slug, and right-aligned age.
 """
 function _render_folders(m::SelectorSession, buf, area)
+    _blank_area!(m, buf, area)
     total = length(m.visible)
     block = Tachikoma.Block(
         title="Folders",
@@ -703,7 +774,7 @@ function _render_side_column(m::SelectorSession, buf, area)
     length(rrows) < 3 && return nothing
     _render_disk(m, buf, rrows[1])
     _render_preview(m, buf, rrows[2])
-    _render_legend(buf, rrows[3])
+    _render_legend(m, buf, rrows[3])
     return nothing
 end
 
@@ -711,6 +782,7 @@ end
 Draw used / free space for the filesystem holding the tries root.
 """
 function _render_disk(m::SelectorSession, buf, area)
+    _blank_area!(m, buf, area)
     inner = Tachikoma.render(
         Tachikoma.Block(
             title="Disk",
@@ -744,6 +816,7 @@ end
 Draw the contents of the selected try.
 """
 function _render_preview(m::SelectorSession, buf, area)
+    _blank_area!(m, buf, area)
     inner = Tachikoma.render(
         Tachikoma.Block(
             title="Preview",
@@ -778,7 +851,8 @@ end
 """
 Draw the badge colour legend.
 """
-function _render_legend(buf, area)
+function _render_legend(m::SelectorSession, buf, area)
+    _blank_area!(m, buf, area)
     inner = Tachikoma.render(
         Tachikoma.Block(
             title="Legends",
@@ -839,6 +913,26 @@ function _render_footer(m::SelectorSession, buf, area)
     Tachikoma.render(
         Tachikoma.StatusBar(left=left, right=right), area, buf
     )
+    return nothing
+end
+
+"""
+Blank every cell of `rect`, keeping whatever colour is underneath.
+
+The animated background paints braille glyphs across the whole frame,
+and panels only write the rows they actually fill — so without this
+the background shows through panel interiors as noise rather than as
+a wash. Writing a space with a `NoColor` background replaces the
+glyph but preserves the cell's background colour, so the animation
+still tints the panel.
+"""
+function _blank_area!(m::SelectorSession, buf, rect)
+    blanks_panels(m.background) || return nothing
+    (rect.width <= 0 || rect.height <= 0) && return nothing
+    blank = " "^rect.width
+    for y in (rect.y):(rect.y + rect.height - 1)
+        Tachikoma.set_string!(buf, rect.x, y, blank, Tachikoma.tstyle(:text))
+    end
     return nothing
 end
 

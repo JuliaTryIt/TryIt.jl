@@ -21,6 +21,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   first.
 - `F9` toggles `.tach` screen recording, replacing the framework
   binding that collided with rename.
+- Theme selection via `TRY_THEME`, covering all 24 Tachikoma themes.
+  `Ctrl-\` still opens the in-app picker, which wins for the rest of
+  the session. An unknown name is ignored rather than fatal.
+- Animated background, on by default, configured with
+  `TRY_BACKGROUND` (`wash`, `dotwave`, `phylo`, `clado`, or an
+  opt-out spelling) and `TRY_BACKGROUND_PRESET`. Skipped when
+  Tachikoma's global motion switch is off.
+- `WashBackground`, the default: an animated colour gradient derived
+  from the active theme. Tachikoma's own backgrounds draw braille in
+  the *foreground*, which shows through panel interiors as noise;
+  blanking the interiors erases them entirely, since no background
+  colour sits underneath. The wash paints cell background colours
+  instead, so text over it stays legible and panels can be blanked
+  safely. The glyph backgrounds remain available, rendered full-bleed.
 - Disk panel showing used and free space for the filesystem holding
   the tries root. Degrades to "unavailable" on Windows, where `df`
   does not exist.
@@ -52,6 +66,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   after the `unalias` has executed. Emitting the `unalias` on a
   preceding line is not sufficient: zsh parses the entire `eval`
   string before running any of it.
+- A `.tach` recording left running when the selector closed was
+  silently discarded — `stop_recording!` performs the write, and
+  selecting a try, quitting, or aborting never passed through the F9
+  toggle. The recording is now flushed from `cleanup!`, which covers
+  every exit path. Recordings are written to the tries root rather
+  than the process's working directory.
 - Ctrl-R opened Tachikoma's `.tach` screen recorder instead of
   renaming. The framework claims Ctrl+R in its default bindings and
   intercepts it before `update!` runs. Recording is now disabled for

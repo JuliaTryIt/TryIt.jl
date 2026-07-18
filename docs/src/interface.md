@@ -106,6 +106,56 @@ parsing until after the `unalias` has actually run; emitting the
 `unalias` on a preceding line does not work, because zsh parses the
 entire outer `eval` string before executing any of it.
 
+## Themes
+
+Tachikoma ships 24 themes. Pick one at startup with `TRY_THEME`:
+
+```sh
+export TRY_THEME=dracula
+```
+
+Dark: `kokaku` (default), `esper`, `motoko`, `kaneda`, `neuromancer`,
+`catppuccin`, `solarized`, `dracula`, `outrun`, `zenburn`, `iceberg`,
+`gruvbox`, `horizon`, `dusk`.
+Light: `paper`, `latte`, `solaris`, `sakura`, `ayu`, `frost`,
+`meadow`, `dune`, `lavender`, `overcast`.
+
+`Ctrl-\` opens the in-app theme picker, which overrides `TRY_THEME`
+for the rest of the session and is persisted by Tachikoma across
+runs. An unknown `TRY_THEME` is ignored rather than fatal.
+
+## Animated background
+
+On by default. Configure with `TRY_BACKGROUND`:
+
+| Value                                     | Effect                                |
+| ----------------------------------------- | ------------------------------------- |
+| `wash` (default)                          | Animated colour gradient              |
+| `dotwave`                                 | Braille terrain, full-bleed           |
+| `phylo`                                   | Phylogenetic tree, full-bleed         |
+| `clado`                                   | Cladogram, full-bleed                 |
+| `none`, `off`, `no`, `0`, `false`         | Disabled                              |
+
+`TRY_BACKGROUND_PRESET` selects a variant for the glyph backgrounds
+(clamped into range; a non-numeric value is ignored).
+
+The default is deliberately not one of Tachikoma's own backgrounds.
+Those draw braille glyphs in the *foreground*, and since panels only
+paint the rows they actually fill, the glyphs show through panel
+interiors as noise. Blanking the interiors is not a fix either — it
+erases them outright, because there is no background colour
+underneath to preserve.
+
+`wash` instead paints spaces with an animated background *colour*
+derived from the active theme. Text drawn over it keeps its own
+foreground and inherits the cell's background, so the frame animates
+without competing with the content, and panels can be blanked over it
+safely. The glyph backgrounds remain available and render full-bleed,
+matching Tachikoma's own demos.
+
+The background is also skipped when Tachikoma's global motion switch
+is off, so a reduced-motion preference wins over our default.
+
 ## Performance notes
 
 The view is re-rendered on every frame, so the panels avoid repeating
