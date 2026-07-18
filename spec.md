@@ -29,7 +29,7 @@ changelogs, and traceability matrices can reference them.
 ## 2. Ubiquitous requirements (always-on)
 
 - **UB1.** The system shall create tries in the directory identified by the `TRY_PATH` environment variable, defaulting to `$HOME/work/tries`. (Amended 2026-07-18: was `$HOME/src/tries`. The two reference implementations disagree — `try-cli` documents `~/src/tries`, `try-rs` documents and implements `~/work/tries` — and this project follows `try-rs`.)
-- **UB2.** The system shall name each new try `YYYY-MM-DD-<slug>` using the current local date.
+- **UB2.** The system shall name each new try `YYYY-MM-DD-<slug>` using the current local date. (Reaffirmed 2026-07-18: `try-rs` makes the prefix optional, defaults it *off*, allows an arbitrary `chrono` format, and separates with a **space** (`extract_prefix_date` splits on `' '`). This project deliberately keeps a mandatory hyphen-separated ISO date: it is what `_parse_try_basename`, the filter haystack, rename and graduate are all built on, and changing it would make every existing try unlistable. Divergence accepted.)
 - **UB3.** The system shall derive the slug by lowercasing the input, replacing every run of non-alphanumeric characters with a single `-`, and trimming leading or trailing `-`.
 - **UB4.** The system shall emit a single shell-compatible command on stdout when it needs to change the caller's working directory (the shell function defined by `tryit init` will `eval` it).
 - **UB5.** The system shall write all diagnostic output to stderr, never to stdout. (Amended 2026-07-18: **exception** — while the selector is open, Tachikoma redirects stderr for the whole session so that stray output cannot corrupt the display. A diagnostic written from inside a key handler therefore reaches nobody, and a failing `Ctrl-G` presented as a dead key. Selector-internal failures shall instead be rendered in the help bar until the next keystroke. Outside the TUI, UB5 is unchanged.)
@@ -226,3 +226,35 @@ TryIt.jl/
 - [ ] Version = `0.1.0` at first registration (SemVer pre-1.0).
 - [ ] README badges present: CI, Codecov, Documenter stable+dev, Aqua QA.
 - [ ] `LICENSE` matches `Project.toml` metadata (MIT).
+
+---
+
+## 12. Backlog — gaps against `try-rs` (not yet scheduled)
+
+Identified 2026-07-18 by auditing `tassiovirginio/try-rs`. These are
+recorded rather than specified: they carry `B`-prefixed handles and
+are deliberately written in a form the traceability test does not
+match, so unbuilt work cannot masquerade as a requirement. Promote a
+row to a real requirement ID when it is picked up.
+
+| ID  | Gap | Notes |
+| --- | --- | ----- |
+| B1  | `config.toml` layer | try-rs has 12 keys with XDG discovery and CLI > env > file > defaults precedence. We are env-var only. Most other rows depend on this. |
+| B2  | Multiple tries paths + tab bar | Comma-separated roots, `←`/`→` switches. Our spec assumes exactly one root throughout. |
+| B3  | `Alt+M` move between tries paths | Distinct from graduate (ED8), which targets the projects path. |
+| B4  | `Ctrl+E` open in editor | Emits `<editor> '<path>'` *instead of* `cd`. OF1 only spawns an editor after `cd`, with no per-selection choice. |
+| B5  | Fuzzy matching with ranking | try-rs scores with `SkimMatcherV2`, sorts by score, and highlights matched characters. ED2 is unranked substring. A behavioural divergence, not just a missing extra. |
+| B6  | Inline (non-fullscreen) picker | `--inline-picker`, rendering in place rather than the alternate screen. |
+| B7  | Multi-shell setup and completions | `--setup <shell>` and `--completions` for bash/zsh/fish/PowerShell/Nushell, plus dynamic directory completion. ED13 emits one POSIX function and has no Windows story. |
+| B8  | Panel visibility toggles | `Alt+P` at runtime plus `--show-*/--hide-*` flags and `right_panel_width`. SD4 fixes the layout. |
+| B9  | Transparent background | try-rs defaults to inheriting the terminal background, toggled with `Space` in the theme picker. OF5 has no transparency notion. |
+| B10 | Persist theme choice from the TUI | try-rs prompts to save after `Ctrl+T` and writes the config file. ED15 is runtime-only. |
+| B11 | Shallow clone by default | try-rs uses `--depth 1` with `--full-clone` to opt out, and always `--recurse-submodules`. ED5 specifies neither. |
+| B12 | Branch-aware worktree creation | try-rs probes `git show-ref` and uses `worktree add -b` only for a new branch. ED6 does not distinguish. |
+| B13 | General status-message channel | try-rs sets a status line on every notable operation, not only failures. The UB5 amendment covers errors only. |
+| B14 | Broader packaging | crates.io, AUR, an APT repository, `.deb`, Homebrew, Nix flake. NF12 covers only a PackageCompiler trampoline. |
+
+Two try-rs keys conflict with ours and are deliberately not adopted:
+`Ctrl+N` (move down there, create a try here, ED11) and `Ctrl+J` /
+`Ctrl+K` navigation. `Ctrl+G` graduate, `?` help (ED17) and `F9`
+recording (ED18) have no try-rs counterpart.

@@ -118,6 +118,28 @@ shortcuts that `default_bindings=false` had switched off.
 | NF23 | met        |                                                     |
 | NF24 | met        | Plus Interface, Standalone App, and this page.      |
 
+## Backlog against `try-rs`
+
+An audit of `tassiovirginio/try-rs` on 2026-07-18 found 20 gaps. One
+was a defect on our side and is fixed (UN10, deleting a linked
+worktree). The rest are recorded in `spec.md` §12 with `B`-prefixed
+handles, deliberately in a form the traceability test does not match
+so unbuilt work cannot pass as a requirement.
+
+The largest are a `config.toml` layer (B1), multiple tries paths with
+a tab bar (B2), fuzzy ranked matching instead of substring (B5), and
+multi-shell setup with completions (B7).
+
+Two divergences are deliberate rather than pending:
+
+- **Directory naming.** `try-rs` makes the date prefix optional,
+  defaults it off, and separates with a space. We keep a mandatory
+  hyphenated ISO date — it is what the parser, filter, rename and
+  graduate are built on, and changing it would make every existing
+  try unlistable.
+- **Deletion.** `try-rs` deletes immediately behind a y/n popup; we
+  mark with `✗` and confirm in a batch on exit (ED9, ED10).
+
 ## Non-goals
 
 NG1–NG4 are all respected. NG4 (no public Julia API) is the reason

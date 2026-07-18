@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Backlog of gaps against `try-rs` recorded in `spec.md` §12 (B1–B14)
+  after auditing its source: a `config.toml` layer, multiple tries
+  paths, fuzzy ranked matching, an inline picker, multi-shell setup,
+  and more. Written with `B`-prefixed handles outside the requirement
+  syntax, so unbuilt work does not satisfy the traceability check.
+- UB2 reaffirmed: `try-rs` separates the date prefix with a space and
+  defaults it off; this project keeps a mandatory hyphenated ISO
+  date, and the divergence is now recorded as deliberate.
+
 - Packaging automation: `TagBot.yml` (NF19), `Register.yml` (NF20),
   `.github/dependabot.yml` (NF21) and `CITATION.bib` (NF9).
   `Register.yml` bumps `Project.toml` itself, because
