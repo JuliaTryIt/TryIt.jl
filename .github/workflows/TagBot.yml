@@ -1,0 +1,45 @@
+name: TagBot
+
+# Creates the git tag and GitHub release once a version is merged
+# into the General registry. Also passes DOCUMENTER_KEY so the
+# `stable` docs rebuild on release (NF19, NF22).
+on:
+  issue_comment:
+    types:
+      - created
+  workflow_dispatch:
+    inputs:
+      lookback:
+        description: Days of history to scan for untagged releases
+        default: "3"
+        required: false
+
+permissions:
+  actions: read
+  checks: read
+  contents: write
+  deployments: read
+  issues: read
+  discussions: read
+  packages: read
+  pages: read
+  pull-requests: read
+  repository-projects: read
+  security-events: read
+  statuses: read
+
+jobs:
+  TagBot:
+    # Only react to the registry bot, or to a manual dispatch —
+    # otherwise every issue comment would start a job.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.actor == 'JuliaTagBot'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: JuliaRegistries/TagBot@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # Absent DOCUMENTER_KEY is not fatal: deploydocs falls back
+          # to GITHUB_TOKEN on public repositories.
+          ssh: ${{ secrets.DOCUMENTER_KEY }}

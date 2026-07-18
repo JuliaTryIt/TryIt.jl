@@ -101,7 +101,7 @@ shortcuts that `default_bindings=false` had switched off.
 | NF3  | unmeasured | 30 Hz render rate never benchmarked.                |
 | NF4  | met        | Whole suite runs headless.                          |
 | NF5–NF8 | met     | SciML style, margin 92, enforced in CI.             |
-| NF9  | open       | TagBot, Register, Dependabot, Citation plugins absent. |
+| NF9  | met        | TagBot, Register, Dependabot workflows and `CITATION.bib` present. |
 | NF10 | open       | Not in the General registry.                        |
 | NF11 | met        | `[compat]` for every dep; `julia = "1.10"`.         |
 | NF12 | met        | `build/build.jl` produces a standalone executable.  |
@@ -111,9 +111,9 @@ shortcuts that `default_bindings=false` had switched off.
 | NF16 | met        | Coverage gate in CI.                                |
 | NF17 | met        |                                                     |
 | NF18 | met        | 3 OS × 3 Julia versions.                            |
-| NF19 | open       | No `TagBot.yml`.                                    |
-| NF20 | open       | No `Register.yml`.                                  |
-| NF21 | open       | No `dependabot.yml`.                                |
+| NF19 | met        | `TagBot.yml`, wired to `DOCUMENTER_KEY`.            |
+| NF20 | met        | `Register.yml`; the bump is done in-workflow, as `RegisterAction` has no version input. |
+| NF21 | met        | `dependabot.yml`, monthly, GitHub Actions only.     |
 | NF22 | met        |                                                     |
 | NF23 | met        |                                                     |
 | NF24 | met        | Plus Interface, Standalone App, and this page.      |
@@ -126,16 +126,21 @@ NG1–NG4 are all respected. NG4 (no public Julia API) is the reason
 ## Path to v1.0
 
 The spec scopes v1.0 as NF9–NF12, NF19–NF21, plus a polish pass and
-registration. NF11 and NF12 are done, so what remains is packaging
-automation and the spec reconciliation this page records.
+registration. Everything except NF10 is now met, so the remaining
+work is measurement and the release itself.
+
+The project stays on 0.x until then: `Register.yml` defaults to a
+patch bump, so a release cannot leave 0.x without explicitly choosing
+`major`.
 
 1. ~~**Reconcile the spec with reality.**~~ Done 2026-07-18. One
    thing remains: `spec.md` is still untracked, so the traceability
    test *skips* in CI instead of running. Tracking it is what turns
    this from a local check into a gate.
-2. **Add the missing automation** — `TagBot.yml` (NF19),
-   `Register.yml` (NF20), `dependabot.yml` (NF21), `CITATION.bib`
-   (NF9). Each is a file, not a design problem.
+2. ~~**Add the missing automation.**~~ Done 2026-07-18. `TagBot.yml`,
+   `Register.yml`, `dependabot.yml` and `CITATION.bib` are in place;
+   the version-bump logic was exercised for all three SemVer
+   components before landing.
 3. **Measure NF2 and NF3.** Both are numeric budgets with no
    evidence attached. A benchmark that fails CI when first-frame
    render regresses would turn two unmeasured claims into two met

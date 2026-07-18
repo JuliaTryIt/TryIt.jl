@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Packaging automation: `TagBot.yml` (NF19), `Register.yml` (NF20),
+  `.github/dependabot.yml` (NF21) and `CITATION.bib` (NF9).
+  `Register.yml` bumps `Project.toml` itself, because
+  `julia-actions/RegisterAction` takes only `token` and
+  `registrator` — the version input NF20 describes does not exist on
+  the action. The bump was exercised for patch, minor and major
+  before landing; it defaults to patch, so a release cannot leave
+  0.x unintentionally.
+- `spec.md` is now tracked, so the traceability test runs in CI
+  rather than skipping.
+
 - `spec.md` reconciled with the implementation. Four requirements
   amended (UB1 default path, ED3 narrowed, ED11 rebound to `Ctrl+N`,
   NF1 dependency set), UB5 given an explicit TUI exception, and
