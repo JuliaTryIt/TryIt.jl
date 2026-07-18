@@ -66,6 +66,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   after the `unalias` has executed. Emitting the `unalias` on a
   preceding line is not sufficient: zsh parses the entire `eval`
   string before running any of it.
+- Switching animations off with `Ctrl-A` did not stop the background
+  until the next launch: the motion setting was read once at
+  `open_session` and cached. The selector now re-checks it every
+  frame, so a reduced-motion preference takes effect immediately.
 - A `.tach` recording left running when the selector closed was
   silently discarded — `stop_recording!` performs the write, and
   selecting a try, quitting, or aborting never passed through the F9

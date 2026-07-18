@@ -73,19 +73,45 @@ directory's badges do not change position between frames.
 | -------------- | ------------------------------------------ |
 | `↑` / `↓`      | Move the cursor                            |
 | `Enter`        | `cd` into the selected try, or create one  |
+| `Ctrl-T`       | Create a new dated try                     |
 | `Ctrl-R`       | Rename the selected try                    |
 | `Ctrl-D`       | Flag the selected try for deletion         |
 | `Ctrl-G`       | Graduate the try to the projects directory |
+| `F9`           | Start / stop `.tach` screen recording      |
 | `Esc`          | Quit without changing directory            |
 | `Ctrl-C`       | Abort                                      |
 
-Ctrl-R is claimed by Tachikoma's default bindings for screen
-recording, which intercepts it before the selector sees it. TryIt
-disables that binding so Ctrl-R renames — matching `try-cli` and
-`try-rs` — and moves recording to `F9`, shown as `● REC` in the help
-bar while active. Ctrl+Shift+R was not an option: `KeyEvent` carries
-no modifier fields, and legacy terminals transmit the same byte for
-Ctrl+R and Ctrl+Shift+R. See `upstream-bugs.md`.
+### Framework bindings
+
+These come from Tachikoma rather than from TryIt, and are available
+in the selector alongside the keys above:
+
+| Key      | Action                                              |
+| -------- | --------------------------------------------------- |
+| `Ctrl-\` | Theme picker — all 24 built-in themes               |
+| `Ctrl-S` | Settings — background brightness, saturation, speed |
+| `Ctrl-A` | Toggle animations on or off                         |
+| `Ctrl-/` | Help overlay                                        |
+| `Ctrl-Y` | Copy the visible region to the clipboard            |
+
+Choices made through these overlays are persisted by Tachikoma via
+Preferences, so a theme picked with `Ctrl-\` survives across runs and
+takes precedence over `TRY_THEME` for the rest of the session.
+
+`Ctrl-A` takes effect immediately — the selector re-checks the motion
+setting every frame, so switching animations off stops the background
+at once rather than at the next launch.
+
+One framework binding is deliberately unavailable. `Ctrl-R` normally
+toggles `.tach` screen recording, and Tachikoma intercepts it before
+the selector ever sees it — so TryIt switches that binding off, keeps
+`Ctrl-R` for rename (matching `try-cli` and `try-rs`), and moves
+recording to `F9`.
+
+Ctrl+Shift+R was not an option: `KeyEvent` carries no modifier
+fields, and legacy terminals transmit the same byte for `Ctrl-R` and
+`Ctrl+Shift+R`, so the two cannot be told apart. Function keys parse
+in both legacy and Kitty terminals. See `upstream-bugs.md`.
 
 ## Shell integration
 
@@ -153,8 +179,25 @@ without competing with the content, and panels can be blanked over it
 safely. The glyph backgrounds remain available and render full-bleed,
 matching Tachikoma's own demos.
 
-The background is also skipped when Tachikoma's global motion switch
-is off, so a reduced-motion preference wins over our default.
+The background is skipped entirely when animations are switched off
+— at startup, or live with `Ctrl-A` — so a reduced-motion preference
+always wins over the default. `TRY_BACKGROUND=off` is the persistent
+equivalent.
+
+## Screen recording
+
+`F9` starts and stops a `.tach` screen recording. A `● REC` indicator
+appears in the help bar while capture is running.
+
+Recordings are written to the **tries root** as
+`tryit_<timestamp>.tach`, not to the directory `tryit` was invoked
+from — the selector is run from wherever you happen to be, and
+Tachikoma's default would scatter files across the filesystem.
+
+The recording is flushed on every exit path, including selecting a
+try, quitting with `Esc`, and aborting with `Ctrl-C`. Writing the file
+is what `stop_recording!` does, so a capture left running would
+otherwise be discarded.
 
 ## Performance notes
 

@@ -608,8 +608,11 @@ function Tachikoma.view(m::SelectorSession, f::Tachikoma.Frame)
     # Bound to a local first: narrowing a *mutable field* does not
     # carry into the call, so `m.background` stays
     # `Union{Nothing,Background}` at the call site and JET flags it.
+    # `animations_enabled()` is re-checked every frame, not just at
+    # open: Ctrl-A toggles it live, and a reduced-motion preference
+    # has to take effect immediately rather than at the next launch.
     bg = m.background
-    if bg !== nothing
+    if bg !== nothing && Tachikoma.animations_enabled()
         m.tick += 1
         render_selector_background!(bg, buf, f.area, m.tick)
     end

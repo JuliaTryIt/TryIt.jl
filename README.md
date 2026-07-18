@@ -6,7 +6,7 @@
 [![Documenter (dev)](https://img.shields.io/badge/docs-dev-blue.svg)](https://s-celles.github.io/TryIt.jl/dev)
 [![Aqua QA](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
 
-Ephemeral-workspace manager for Julia developers — a `tryit` command
+A Julia ephemeral-workspace manager for developers — a `tryit` command
 that spins up, filters, and graduates dated scratch directories from
 your terminal.
 
@@ -67,12 +67,15 @@ matching shell function, so the same command works for both.
 
 ## Configuration
 
-| Variable       | Meaning                                          |
-| -------------- | ------------------------------------------------ |
-| `TRY_PATH`     | Tries root (default `$HOME/src/tries`)           |
-| `TRY_PROJECTS` | Graduation target (default `dirname($TRY_PATH)`) |
-| `TRY_EDITOR`   | Editor launched on a try                         |
-| `TRY_TEMPLATE` | Directory copied into each new try               |
+| Variable         | Meaning                                           |
+| ---------------- | ------------------------------------------------- |
+| `TRY_PATH`     | Tries root (default`$HOME/src/tries`)           |
+| `TRY_PROJECTS` | Graduation target (default`dirname($TRY_PATH)`) |
+| `TRY_EDITOR`   | Editor launched on a try                          |
+| `TRY_TEMPLATE` | Directory copied into each new try                |
+| `TRY_THEME`    | Startup theme, any of 24 (`Ctrl-\` picks live)    |
+| `TRY_BACKGROUND` | Animated background: `wash` (default), `dotwave`, `phylo`, `clado`, `off` |
+| `TRY_BACKGROUND_PRESET` | Variant index for the glyph backgrounds |
 
 ## Documentation
 
