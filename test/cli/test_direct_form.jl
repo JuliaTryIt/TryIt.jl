@@ -54,7 +54,7 @@ end
     @test occursin("eval", out)
     # Contains the tries-path fallback when no arg was given.
     @test occursin("TRY_PATH:-", out)
-    @test occursin("src/tries", out)
+    @test occursin("work/tries", out)
 end
 
 @testitem "cli: init with positional hard-codes the tries path" begin

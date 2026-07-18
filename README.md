@@ -21,6 +21,10 @@ on [Tachikoma.jl](https://github.com/kahliburke/Tachikoma.jl):
 - [`try-rs`](https://github.com/tassiovirginio/try-rs) — a Rust port
   and re-imagination with a modern TUI.
 
+TryIt.jl follows `try-rs` for the default tries root
+(`$HOME/work/tries`); `try-cli` uses `$HOME/src/tries`. `TRY_PATH`
+overrides it in either case.
+
 All three share the same model: date-prefixed directories under a
 tries root, an interactive fuzzy selector biased toward recently
 touched entries, and a shell function that `eval`s a `cd` emitted on
@@ -69,7 +73,7 @@ matching shell function, so the same command works for both.
 
 | Variable         | Meaning                                           |
 | ---------------- | ------------------------------------------------- |
-| `TRY_PATH`     | Tries root (default`$HOME/src/tries`)           |
+| `TRY_PATH`     | Tries root (default `$HOME/work/tries`)          |
 | `TRY_PROJECTS` | Graduation target (default`dirname($TRY_PATH)`) |
 | `TRY_EDITOR`   | Editor launched on a try                          |
 | `TRY_TEMPLATE` | Directory copied into each new try                |

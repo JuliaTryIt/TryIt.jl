@@ -55,6 +55,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Building the standalone app created warm-up directories inside the
+  building user's *real* tries root. `build/precompile_app.jl` drove
+  the direct form, which takes no path argument and so resolved
+  `TriesPath()` to the default rather than to the script's temporary
+  directory. `TRY_PATH` is now set for the whole workload.
+
 - `tryit init` could not install its shell function for users with an
   existing `alias tryit=...` (common when migrating from `try-cli` or
   `try-rs`). zsh expands aliases while *parsing* a function
@@ -94,6 +100,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Reference page.
 
 ### Changed
+
+- The default tries root moved from `$HOME/src/tries` to
+  `$HOME/work/tries`, following `try-rs`. The two upstreams disagree:
+  `try-cli` documents `~/src/tries`, `try-rs` documents and
+  implements `~/work/tries`. `TRY_PATH` overrides it either way.
+  **Existing users with tries under `~/src/tries` should set
+  `TRY_PATH=~/src/tries` or move the directory.**
 
 - Exit statuses moved from loose `const EXIT_*` integers to a
   module-scoped enum, `ExitCode.T`, per the project's Julia enum

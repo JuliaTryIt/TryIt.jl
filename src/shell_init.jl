@@ -7,7 +7,7 @@ up a function that invokes the Julia CLI and `eval`s its stdout so
 
 `positional`, when non-`nothing`, is hard-coded into the function
 as the tries root. When `nothing`, the function resolves the root
-from `\$TRY_PATH` at call time (with `\$HOME/src/tries` as the
+from `\$TRY_PATH` at call time (with `\$HOME/work/tries` as the
 fallback).
 
 When running as a compiled PackageCompiler app (see
@@ -23,7 +23,7 @@ function emit_shell_init(
     tries = if positional === nothing
         # Keep this as a shell-syntax literal — resolved by the shell
         # at call time, not by Julia at `tryit init` time.
-        raw"${TRY_PATH:-$HOME/src/tries}"
+        raw"${TRY_PATH:-$HOME/work/tries}"
     else
         _shell_quote(String(positional))
     end

@@ -5,7 +5,7 @@ Resolution order (FR-001 / UB1):
 
  1. `positional` argument (highest priority).
  2. `ENV["TRY_PATH"]`.
- 3. `\$HOME/src/tries` (default).
+ 3. `\$HOME/work/tries` (default), matching `try-rs`.
 
 EARS coverage: UB1.
 """
@@ -44,7 +44,7 @@ function _resolve_tries_root(positional::Union{Nothing, AbstractString})
         return (String(env), :env)
     end
     home = get(ENV, "HOME", homedir())
-    return (joinpath(home, "src", "tries"), :default)
+    return (joinpath(home, "work", "tries"), :default)
 end
 
 function _ensure_writable(path::AbstractString)

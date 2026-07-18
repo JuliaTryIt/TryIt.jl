@@ -82,7 +82,7 @@ into the new try automatically.
 
 | Variable | Purpose | Default |
 |----------|---------|---------|
-| `TRY_PATH` | Directory under which tries live. | `$HOME/src/tries` |
+| `TRY_PATH` | Directory under which tries live. | `$HOME/work/tries` |
 
 More knobs (`TRY_EDITOR`, `TRY_PROJECTS`, `.try-template`) land in
 v0.3.

@@ -9,12 +9,19 @@
 
 using TryIt
 
+# TRY_PATH is set for the whole block, not just passed to `init`.
+# The direct form takes no path argument, so it resolves the root
+# through `TriesPath()` — which without this falls back to the
+# default and creates warm-up directories inside the *building
+# user's real tries directory*.
 mktempdir() do dir
-    redirect_stdout(devnull) do
-        TryIt._app_main(["init", dir])
-        TryIt._app_main(["a-warmup-slug"])
-    end
-    redirect_stderr(devnull) do
-        TryIt._app_main(["unknown", "arguments", "here"])
+    withenv("TRY_PATH" => dir) do
+        redirect_stdout(devnull) do
+            TryIt._app_main(["init", dir])
+            TryIt._app_main(["a-warmup-slug"])
+        end
+        redirect_stderr(devnull) do
+            TryIt._app_main(["unknown", "arguments", "here"])
+        end
     end
 end

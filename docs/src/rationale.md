@@ -21,7 +21,7 @@ The standard answer is to print a shell command on stdout and let
 the user's shell `eval` it. Concretely, `TryIt` prints
 
 ```text
-cd '/home/user/src/tries/2026-04-19-my-idea'
+cd '/home/user/work/tries/2026-04-19-my-idea'
 ```
 
 and `tryit init`'s shell function wraps the invocation in

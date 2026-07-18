@@ -22,7 +22,7 @@
     home = mktempdir()
     withenv("TRY_PATH" => nothing, "HOME" => home) do
         r = TriesPath()
-        @test r.root == realpath(joinpath(home, "src", "tries"))
+        @test r.root == realpath(joinpath(home, "work", "tries"))
         @test r.source === :default
         @test isdir(r.root)
     end
