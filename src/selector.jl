@@ -39,6 +39,9 @@ EARS coverage: ED1, ED2, ED3, ED4, ED12, SD1, UN7.
      stderr for the whole TUI session, so `diag` output from inside
      `update!` is invisible — failures have to be surfaced in-frame."
     notice::String = ""
+    "Which date `Ctrl-P` will apply while in `:datepick`: `:mtime` or
+     `:today`."
+    date_choice::Symbol = :mtime
     "Cursor into [`BACKGROUND_NAMES`](@ref) while in `:animation`."
     anim_index::Int = 1
     "Animation active when the picker opened, restored if cancelled."
@@ -247,9 +250,24 @@ function _handle_ctrl_p!(m::SelectorSession)
     (isempty(m.visible) || m.cursor < 1 || m.cursor > length(m.visible)) &&
         return nothing
     src = m.visible[m.cursor]
+    if !src.dated
+        # Which date to stamp on is a real choice and it varies per
+        # folder: an old clone picked up today wants today, an archive
+        # being filed wants its own mtime. Ask rather than guess.
+        m.date_choice = :mtime
+        m.mode = :datepick
+        return nothing
+    end
+    return _apply_date_toggle!(m, src, nothing)
+end
+
+"""
+Commit the date toggle for `src`, stamping `on` when adding.
+"""
+function _apply_date_toggle!(m::SelectorSession, src::Try, on::Union{Nothing, Date})
     local inv::DateInvocation
     try
-        inv = DateInvocation(src)
+        inv = DateInvocation(src, on)
     catch err
         if err isa ArgumentError
             notify!(m, _err_msg(err))
@@ -284,6 +302,30 @@ function _open_theme_picker!(m::SelectorSession)
     idx = findfirst(==(current), theme_names())
     m.theme_index = idx === nothing ? 1 : idx
     m.mode = :theme
+    return nothing
+end
+
+"""
+Date-choice reducer.
+
+EARS coverage: ED19.
+"""
+function _update_datepick!(m::SelectorSession, evt::Tachikoma.KeyEvent)
+    key = evt.key
+    if key === :enter
+        m.mode = :normal
+        (m.cursor >= 1 && m.cursor <= length(m.visible)) || return nothing
+        src = m.visible[m.cursor]
+        _apply_date_toggle!(m, src, m.date_choice === :today ? Dates.today() : nothing)
+    elseif key === :escape
+        m.mode = :normal
+    elseif key === :up || key === :left
+        m.date_choice = :mtime
+    elseif key === :down || key === :right
+        m.date_choice = :today
+    elseif key === :tab
+        m.date_choice = m.date_choice === :mtime ? :today : :mtime
+    end
     return nothing
 end
 
@@ -444,6 +486,10 @@ function Tachikoma.update!(m::SelectorSession, evt::Tachikoma.KeyEvent)
     end
     if m.mode === :animation
         _update_animation!(m, evt)
+        return nothing
+    end
+    if m.mode === :datepick
+        _update_datepick!(m, evt)
         return nothing
     end
     if m.mode === :docs
@@ -979,6 +1025,7 @@ function Tachikoma.view(m::SelectorSession, f::Tachikoma.Frame)
     m.mode === :help && _render_help(m, buf, f.area)
     m.mode === :theme && _render_theme_picker(m, buf, f.area)
     m.mode === :animation && _render_animation_picker(m, buf, f.area)
+    m.mode === :datepick && _render_datepick(m, buf, f.area)
     m.mode === :about && _render_about(m, buf, f.area)
     m.mode === :docs && _render_docs(m, buf, f.area)
     return nothing
@@ -1109,6 +1156,35 @@ function _render_docs(m::SelectorSession, buf, area)
     )
     pane.pane.offset = m.doc_offset
     Tachikoma.render(pane, box, buf)
+    return nothing
+end
+
+"""
+Draw the date-choice prompt (Ctrl-P on an undated folder).
+
+Both dates are spelled out: the whole reason to ask is that they
+differ, so naming only one would leave the choice blind.
+"""
+function _render_datepick(m::SelectorSession, buf, area)
+    (m.cursor >= 1 && m.cursor <= length(m.visible)) || return nothing
+    src = m.visible[m.cursor]
+    own = Dates.format(src.date, dateformat"yyyy-mm-dd")
+    today = Dates.format(Dates.today(), dateformat"yyyy-mm-dd")
+
+    Tachikoma.render(
+        Tachikoma.Modal(
+            title="Which date?",
+            message=string("Add a date prefix to \"", src.name, "\"."),
+            cancel_label=string("Its own  ", own),
+            confirm_label=string("Today  ", today),
+            selected=m.date_choice === :mtime ? :cancel : :confirm,
+            cancel_style=Tachikoma.tstyle(:accent, bold=true),
+            confirm_style=Tachikoma.tstyle(:success, bold=true),
+            border_style=Tachikoma.tstyle(:accent, bold=true),
+            title_style=Tachikoma.tstyle(:title, bold=true)
+        ),
+        area, buf
+    )
     return nothing
 end
 

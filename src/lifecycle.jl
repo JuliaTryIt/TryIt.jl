@@ -153,7 +153,7 @@ struct DateInvocation
     dest_path::String
 end
 
-function DateInvocation(src::Try)
+function DateInvocation(src::Try, on::Union{Nothing, Date}=nothing)
     # A toggle, not a one-way door: dating an undated directory
     # prepends the prefix, and pressing it again takes the prefix off.
     dest = if src.dated
@@ -163,7 +163,10 @@ function DateInvocation(src::Try)
         # would turn `LibPARI.jl` into `libpari-jl` and lose the
         # identity the user gave the directory; the parser accepts any
         # remainder after a valid date, so there is no need.
-        stamp = Dates.format(src.date, dateformat"yyyy-mm-dd")
+        # `on` lets the caller pick a date other than the inferred
+        # one — today, typically, for a folder whose mtime says more
+        # about when it was last touched than when work on it began.
+        stamp = Dates.format(something(on, src.date), dateformat"yyyy-mm-dd")
         joinpath(dirname(src.path), string(stamp, "-", src.name))
     end
     ispath(dest) &&

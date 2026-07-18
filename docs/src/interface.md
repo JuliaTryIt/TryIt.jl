@@ -34,8 +34,26 @@ rest of its name is not a valid slug, so `2026-04-15-MyPkg.jl` is
 listed under April, not today.
 
 `Ctrl-P` toggles a folder's date prefix, renaming it in place.
-Adding turns `LibPARI.jl` into `2026-07-18-LibPARI.jl`; pressing it
-again takes the prefix back off. It commits the date already shown —
+Pressing it on a dated folder removes the prefix immediately — there
+is nothing to decide. Pressing it on an undated one asks which date
+to use:
+
+```text
+┏━ Which date? ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃          Add a date prefix to "LibPARI.jl".         ┃
+┃    [ Its own  2026-04-15 ]  [ Today  2026-07-18 ]   ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+```
+
+Both dates are spelled out, because the whole reason to ask is that
+they differ. "Its own" is the mtime-derived date already shown in the
+row and is the default; "Today" suits a folder whose mtime says more
+about when it was last touched than when you started working on it.
+The choice is not remembered — the right answer genuinely varies per
+folder.
+
+The name is preserved in both directions: `LibPARI.jl` becomes
+`2026-04-15-LibPARI.jl`, never `2026-04-15-libpari-jl`. It commits the date already shown —
 the mtime-derived one — rather than today's, so the row does not jump
 after the rename, and it prepends the prefix without re-slugging, so
 `LibPARI.jl` becomes `2026-07-18-LibPARI.jl` rather than

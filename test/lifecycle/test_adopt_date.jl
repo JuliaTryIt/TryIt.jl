@@ -108,7 +108,9 @@ end
         m.cursor = 1
         @test m.visible[1].dated === false
 
-        press_keys!(m, "\x10")          # Ctrl-P
+        press_keys!(m, "\x10")          # Ctrl-P — asks which date
+        @test m.mode === :datepick
+        press_keys!(m, "\r")            # take the default (its own)
         # Stays in the selector, list refreshed in place.
         @test m.done === false
         @test length(m.visible) == 1

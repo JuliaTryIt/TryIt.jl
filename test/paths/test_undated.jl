@@ -32,6 +32,7 @@ end
 
 @testitem "paths: an undated entry dates from the filesystem" begin
     using Dates
+    using TryIt
     using TryIt: TriesPath, list_tries
 
     mktempdir() do dir
@@ -40,8 +41,9 @@ end
         mkpath(target)
 
         t = only(list_tries(root))
-        # No prefix to read, so the OS mtime stands in.
-        @test t.date == Date(Dates.unix2datetime(mtime(target)))
+        # No prefix to read, so the OS mtime stands in — as a *local*
+        # date, since every date TryIt writes comes from `today()`.
+        @test t.date == TryIt._local_date(mtime(target))
         @test t.mtime == mtime(target)
     end
 end

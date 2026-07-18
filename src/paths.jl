@@ -193,7 +193,7 @@ function list_tries(root::TriesPath)
             # let the selector render it differently.
             push!(
                 entries,
-                Try(full, _derive_slug(name), Date(unix2datetime(stamp)),
+                Try(full, _derive_slug(name), _local_date(stamp),
                     stamp, String(name), false)
             )
         else
@@ -207,6 +207,16 @@ function list_tries(root::TriesPath)
     sort!(entries; by=t -> t.mtime, rev=true)
     return entries
 end
+
+"""
+Local calendar date of a unix timestamp.
+
+`unix2datetime` yields UTC, but every date TryIt *writes* comes from
+`Dates.today()`, which is local. Mixing them puts a folder touched
+shortly after midnight on the wrong day, and makes the date shown for
+an undated folder disagree with the prefix it would be given.
+"""
+_local_date(t::Real) = Date(Dates.unix2datetime(t) + (Dates.now() - Dates.now(Dates.UTC)))
 
 const _TRY_BASENAME_RE = r"^(\d{4})-(\d{2})-(\d{2})-(.+)$"
 

@@ -47,8 +47,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `CommonMark.jl` runtime dependency, required by the above; NF1
   amended.
 
-- `Ctrl-P` toggles a folder's date prefix from the selector (ED19),
-  adding it when absent and removing it when present. It commits the date already
+- `Ctrl-P` toggles a folder's date prefix from the selector (ED19).
+  Adding asks which date to stamp — the folder's own or today's —
+  naming both concretely, since the reason to ask is that they
+  differ. Removing does not ask; there is nothing to decide. It commits the date already
   displayed rather than today's, so the row does not jump, and
   prepends the prefix without re-slugging, so `LibPARI.jl` becomes
   `2026-07-18-LibPARI.jl`. Pressing it on an already-dated try
@@ -156,6 +158,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - This changelog.
 
 ### Fixed
+
+- The date shown for an undated folder was computed in UTC while
+  every date TryIt writes comes from `Dates.today()`, which is local.
+  A folder touched shortly after midnight was therefore listed under
+  the previous day, and the date offered when stamping a prefix
+  disagreed with the one displayed. Surfaced by a test that set an
+  mtime with `touch -t` and got a year back that was off by one.
 
 - Config reads and writes take their path explicitly instead of only
   through `TRY_CONFIG`. `withenv` mutates the process-global `ENV`,
