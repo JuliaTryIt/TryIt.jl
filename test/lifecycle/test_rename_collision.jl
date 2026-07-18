@@ -14,19 +14,14 @@
     # is index 1 deterministically after refresh).
     session.cursor = findfirst(t -> t.slug.value == "alpha", session.visible)
 
-    # Capture stderr so we can confirm the diag surfaced.
-    captured_stderr = mktemp() do path, io
-        redirect_stderr(io) do
-            press_keys!(session, "\x12")                          # Ctrl-R
-            press_keys!(session, "\x7f"^length("alpha"))          # clear buffer
-            press_keys!(session, "bravo\r")                       # collide
-        end
-        flush(io)
-        read(path, String)
-    end
+    press_keys!(session, "\x12")                          # Ctrl-R
+    press_keys!(session, "\x7f"^length("alpha"))          # clear buffer
+    press_keys!(session, "bravo\r")                       # collide
 
     @test session.mode === :rename        # stayed in rename for retry
-    @test occursin("destination exists", captured_stderr)
+    # Surfaced on the model rather than stderr, which the TUI
+    # redirects — see `notify!`.
+    @test occursin("destination exists", session.notice)
     @test isdir(a.path)
     @test isdir(b.path)
     @test length(readdir(dir)) == 2

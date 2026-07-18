@@ -20,18 +20,15 @@
         session = open_session(root)
         session.cursor = 1
 
-        captured_stderr = mktemp() do path, io
-            redirect_stderr(io) do
-                press_keys!(session, "\x07")
-            end
-            flush(io)
-            read(path, String)
-        end
+        press_keys!(session, "\x07")
 
         # Selector stays open; no exit action on collision.
         @test session.done === false
         @test session.exit_action === :none
-        @test occursin("destination exists", captured_stderr)
+        # The message goes to the model, not to stderr: Tachikoma
+        # redirects stderr for the whole TUI session, so a `diag` here
+        # would never reach the user and Ctrl-G would look dead.
+        @test occursin("destination exists", session.notice)
         # Source try untouched.
         @test isdir(src.path)
         # Destination untouched — sentinel still present.

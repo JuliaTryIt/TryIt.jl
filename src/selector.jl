@@ -35,6 +35,10 @@ EARS coverage: ED1, ED2, ED3, ED4, ED12, SD1, UN7.
     mode::Symbol = :normal
     "Highlighted action while in `:choose`: `:open` or `:create`."
     choice::Symbol = :open
+    "Transient message shown in the help bar. Tachikoma redirects
+     stderr for the whole TUI session, so `diag` output from inside
+     `update!` is invisible — failures have to be surfaced in-frame."
+    notice::String = ""
     "Input line contents while in `:rename`. Empty otherwise."
     rename_buf::String = ""
     "Absolute paths flagged for delete on selector exit (ED9 / ED10)."
@@ -183,6 +187,20 @@ function refresh_panels!(m::SelectorSession)
 end
 
 """
+Show `msg` in the help bar until the next keystroke.
+
+Replaces [`diag`](@ref) for failures raised from inside `update!`.
+Tachikoma redirects stderr for the whole TUI session (its `app.jl`
+does this so stray `println` cannot corrupt the display), so a
+`diag` call from a key handler goes nowhere and the key looks dead —
+which is exactly how a failing `Ctrl-G` presented.
+"""
+function notify!(m::SelectorSession, msg::AbstractString)
+    m.notice = String(msg)
+    return nothing
+end
+
+"""
 Badges for `t`, memoised in the session's [`badge_cache`](@ref).
 """
 function badges_for(m::SelectorSession, t::Try)
@@ -256,6 +274,16 @@ function Tachikoma.update!(m::SelectorSession, evt::Tachikoma.KeyEvent)
         _update_choose!(m, evt)
         return nothing
     end
+    if m.mode === :help
+        # Any key dismisses; the overlay is reference material, not a
+        # prompt, so trapping the user behind one specific key would
+        # only be a hazard.
+        m.mode = :normal
+        return nothing
+    end
+    # A notice describes the previous keystroke, so the next one
+    # retires it rather than letting a stale error linger.
+    isempty(m.notice) || (m.notice = "")
     # :normal mode below.
     if key === :enter
         _handle_enter!(m)
@@ -295,6 +323,11 @@ function Tachikoma.update!(m::SelectorSession, evt::Tachikoma.KeyEvent)
         _handle_ctrl_d!(m)
     elseif key === :f9
         toggle_recording!(m)
+    elseif key === :char && evt.char == '?'
+        # Safe to take unconditionally: `_parse_try_basename` rejects
+        # slugs outside [a-z0-9-], so no listed try can contain '?'
+        # and a filter holding one could never match.
+        m.mode = :help
     elseif key === :char && isprint(evt.char) && evt.char != '\0'
         m.filter *= evt.char
         refresh_visible!(m)
@@ -364,7 +397,7 @@ function _commit_rename!(m::SelectorSession)
         new_slug = slug(m.rename_buf)
     catch err
         if err isa ArgumentError
-            diag(:rename, _err_msg(err))
+            notify!(m, _err_msg(err))
             return nothing      # stay in :rename so the user can retry
         end
         rethrow()
@@ -380,7 +413,7 @@ function _commit_rename!(m::SelectorSession)
         inv = RenameInvocation(src, new_slug)
     catch err
         if err isa ArgumentError
-            diag(:rename, _err_msg(err))
+            notify!(m, _err_msg(err))
             return nothing      # stay in :rename
         end
         rethrow()
@@ -388,7 +421,7 @@ function _commit_rename!(m::SelectorSession)
     try
         rename_try(inv)
     catch err
-        diag(:rename, _err_msg(err))
+        notify!(m, _err_msg(err))
         return nothing
     end
     # Refresh the snapshot so the renamed row is reachable.
@@ -427,7 +460,7 @@ function _handle_ctrl_g!(m::SelectorSession)
         inv = GraduateInvocation(src, m.root)
     catch err
         if err isa ArgumentError
-            diag(:graduate, _err_msg(err))
+            notify!(m, _err_msg(err))
             return nothing
         end
         rethrow()
@@ -436,7 +469,7 @@ function _handle_ctrl_g!(m::SelectorSession)
     try
         dest = graduate_try(inv)
     catch err
-        diag(:graduate, _err_msg(err))
+        notify!(m, _err_msg(err))
         return nothing
     end
     m.exit_action = :cd
@@ -750,6 +783,70 @@ function Tachikoma.view(m::SelectorSession, f::Tachikoma.Frame)
     # Last, and over the full frame: an overlay that panels could
     # paint across would defeat the point of asking.
     m.mode === :choose && _render_choice(m, buf, f.area)
+    m.mode === :help && _render_help(m, buf, f.area)
+    return nothing
+end
+
+"""
+Key bindings shown by the `?` overlay.
+
+Includes Tachikoma's own bindings as well as TryIt's: from the user's
+side they are simply keys that work here, and the framework's own
+help overlay is private to its app loop, so it cannot be reused.
+"""
+const HELP_KEYS = [
+    ("↑ / ↓", "Move the cursor"),
+    ("Enter", "Open the highlighted try, or create one"),
+    ("Ctrl-T", "Create a new dated try"),
+    ("Ctrl-R", "Rename the highlighted try"),
+    ("Ctrl-D", "Flag the highlighted try for deletion"),
+    ("Ctrl-G", "Graduate: drop the date, move out of the tries root"),
+    ("F9", "Start / stop .tach screen recording"),
+    ("?", "This help"),
+    ("Esc", "Quit without changing directory"),
+    ("Ctrl-C", "Abort"),
+    ("", ""),
+    ("Ctrl-\\\\", "Theme picker"),
+    ("Ctrl-S", "Settings: background brightness, speed"),
+    ("Ctrl-A", "Toggle animations"),
+    ("Ctrl-Y", "Copy the visible region")
+]
+
+"""
+Draw the `?` key-binding overlay.
+"""
+function _render_help(m::SelectorSession, buf, area)
+    rows = length(HELP_KEYS) + 2
+    width = min(area.width - 4, 64)
+    (width < 24 || area.height < rows + 2) && return nothing
+
+    x = area.x + div(area.width - width, 2)
+    y = area.y + max(0, div(area.height - rows, 2))
+    box = Tachikoma.Rect(x, y, width, rows)
+
+    _blank_area!(m, buf, box)
+    inner = Tachikoma.render(
+        Tachikoma.Block(
+            title="Key bindings",
+            title_right="any key closes",
+            title_style=Tachikoma.tstyle(:title, bold=true),
+            border_style=Tachikoma.tstyle(:accent, bold=true)
+        ),
+        box, buf
+    )
+    (inner.width <= 0 || inner.height <= 0) && return nothing
+
+    for (i, (k, desc)) in enumerate(HELP_KEYS)
+        i > inner.height && break
+        yy = inner.y + i - 1
+        # Blank rows separate our bindings from the framework's.
+        isempty(k) && continue
+        cx = Tachikoma.set_string!(
+            buf, inner.x, yy, rpad(k, 9), Tachikoma.tstyle(:accent, bold=true))
+        Tachikoma.set_string!(
+            buf, cx, yy, _pad(desc, max(0, inner.width - 9)),
+            Tachikoma.tstyle(:text))
+    end
     return nothing
 end
 
@@ -1024,7 +1121,14 @@ Draw the key-binding help bar.
 function _render_footer(m::SelectorSession, buf, area)
     key = Tachikoma.tstyle(:accent, bold=true)
     lbl = Tachikoma.tstyle(:text_dim)
-    left = if m.mode === :choose
+    left = if !isempty(m.notice)
+        # A failure the user just caused outranks the binding list —
+        # stderr is redirected, so this bar is the only channel left.
+        [
+            Tachikoma.Span(" ! ", Tachikoma.tstyle(:error, bold=true)),
+            Tachikoma.Span(m.notice, Tachikoma.tstyle(:warning))
+        ]
+    elseif m.mode === :choose
         [
             Tachikoma.Span(" ↑↓ ", key), Tachikoma.Span("Choose ", lbl),
             Tachikoma.Span("Enter ", key), Tachikoma.Span("Confirm ", lbl),
@@ -1042,7 +1146,8 @@ function _render_footer(m::SelectorSession, buf, area)
             Tachikoma.Span("Ctrl-R ", key), Tachikoma.Span("Rename ", lbl),
             Tachikoma.Span("Ctrl-D ", key), Tachikoma.Span("Del ", lbl),
             Tachikoma.Span("Ctrl-G ", key), Tachikoma.Span("Graduate ", lbl),
-            Tachikoma.Span("F9 ", key), Tachikoma.Span("Rec ", lbl)
+            Tachikoma.Span("F9 ", key), Tachikoma.Span("Rec ", lbl),
+            Tachikoma.Span("? ", key), Tachikoma.Span("Help ", lbl)
         ]
     end
     right = Tachikoma.Span[]
