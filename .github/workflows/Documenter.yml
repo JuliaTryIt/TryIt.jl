@@ -1,0 +1,39 @@
+name: Documenter
+
+on:
+  push:
+    branches:
+      - master
+      - main
+    tags: ['*']
+  pull_request:
+
+permissions:
+  actions: write
+  contents: write
+  pull-requests: read
+  statuses: write
+
+jobs:
+  build:
+    name: Build & deploy docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: '1'
+      - uses: julia-actions/cache@v3
+      - name: Install docs environment
+        run: |
+          julia --project=docs --startup-file=no -e '
+            using Pkg
+            Pkg.develop(PackageSpec(path=pwd()))
+            Pkg.instantiate()
+          '
+      - name: Build and (if on default branch) deploy
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # DOCUMENTER_KEY is wired in v0.4 per ROADMAP; absent here is fine
+          # because deploydocs falls back to GITHUB_TOKEN for public repos.
+        run: julia --project=docs --startup-file=no docs/make.jl

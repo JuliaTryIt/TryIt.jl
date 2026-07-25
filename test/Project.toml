@@ -1,0 +1,18 @@
+# PluginGuard is not in General yet. A `[sources]` entry is legal
+# here because the test environment is never registered — the package
+# Project.toml keeps it as a plain weak dependency, which is what
+# blocks registering TryIt until PluginGuard lands upstream.
+[sources]
+PluginGuard = {url = "https://github.com/s-celles/PluginGuard.jl"}
+
+[deps]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
+PluginGuard = "9fbe1cae-3473-4993-a645-bc3c67a12de8"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Tachikoma = "468859d6-42d8-48b7-8ad9-1d312e0e3b0a"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
+TryIt = "4fd045cc-86a6-4da0-9d6b-062dfe3d8e1e"
+Unicode = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"

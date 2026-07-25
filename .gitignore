@@ -1,0 +1,88 @@
+# Deny-by-default: ignore everything, then allow specific files below.
+*
+
+# Allow descending into specific subdirectories only.
+!/src/
+!/src/**/
+!/test/
+!/test/**/
+!/docs/
+!/docs/**/
+!/ext/
+!/ext/**/
+!/assets/
+!/assets/**/
+!/bin/
+!/bin/**/
+!/.github/
+!/.github/**/
+!/build/
+!/build/**/
+
+# -------------------------------------------------------------
+# Explicit allowlist of files (by directory or exact filename)
+# -------------------------------------------------------------
+
+# Root files
+!/Project.toml
+!/.JuliaFormatter.toml
+!/README.md
+!/CHANGELOG.md
+!/LICENSE
+!/LICENSE.*
+!/CITATION*
+!/.gitignore
+!/.gitattributes
+!/.editorconfig
+!/codecov.yml
+!/Makefile
+!/Dockerfile
+
+# Code & Tests
+!/src/**/*.jl
+!/test/**/*.jl
+!/test/**/*.toml
+!/ext/**/*.jl
+!/build/**/*.jl
+!/build/**/*.toml
+
+# Docs
+!/docs/**/*.jl
+!/docs/**/*.toml
+!/docs/**/*.md
+!/docs/**/*.png
+!/docs/**/*.svg
+!/docs/**/*.jpg
+
+# Assets
+!/assets/**/*.png
+!/assets/**/*.svg
+!/assets/**/*.jpg
+
+# CI & GitHub Actions
+!/.github/**/*.yml
+!/.github/**/*.yaml
+
+# Scripts
+!/bin/**/*.sh
+
+# Re-ignore Julia / docs build artifacts (overrides allow list above).
+Manifest.toml
+/docs/build/
+/docs/site/
+# PackageCompiler app bundle: vendors the whole Julia share/ tree,
+# so the *.jl / *.toml allow-rules above would otherwise sweep in
+# thousands of runtime files.
+/build/tryit-app/
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+lcov.info
+
+# Re-ignore editor / OS / env files.
+.vscode/
+.idea/
+.claude/
+.DS_Store
+.env
+.env.local

@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+      - main
+    tags: ['*']
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != format('refs/heads/{0}', github.event.repository.default_branch) }}
+
+jobs:
+  test:
+    name: Julia ${{ matrix.version }} - ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - '1.12'   # compat floor (NF11)
+          - '1'      # current stable
+          - 'nightly'
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      # No `arch:` — setup-julia picks each runner's native
+      # architecture. Pinning `x64` broke outright once `macos-latest`
+      # moved to Apple Silicon: setup-julia refuses x64 on an arm64
+      # runner unless `force-arch` is set, and forcing it would test an
+      # emulated architecture nobody ships on. Letting it default gives
+      # x64 on Linux and Windows and aarch64 on macOS, which is what
+      # users actually run.
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: ${{ matrix.version }}
+      - uses: julia-actions/cache@v3
+      - name: Configure Git for private packages
+        shell: bash
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.PLUGINGUARD_TOKEN }}@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://x-access-token:${{ secrets.PLUGINGUARD_TOKEN }}@github.com/".insteadOf "git@github.com:"
+          git config --global credential.https://github.com.helper ""
+      - uses: julia-actions/julia-buildpkg@v1
+      - uses: julia-actions/julia-runtest@v1
+      - uses: julia-actions/julia-processcoverage@v1
+      - name: Enforce coverage thresholds (NF16 / FR-042)
+        # Only run the gate on Linux-1 to avoid matrix-cell noise;
+        # slug coverage is platform-independent.
+        if: matrix.os == 'ubuntu-latest' && matrix.version == '1'
+        run: julia --startup-file=no --project=. test/coverage/gate.jl
+      - uses: codecov/codecov-action@v7
+        with:
+          files: lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+
+  format:
+    name: Format check (SciML style)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: '1'
+      - uses: julia-actions/cache@v3
+      - name: Install JuliaFormatter
+        run: julia --startup-file=no -e 'using Pkg; Pkg.add(name="JuliaFormatter", version="1")'
+      - name: Check formatting
+        run: |
+          julia --startup-file=no -e '
+            using JuliaFormatter
+            ok = format(".", verbose=true)
+            if !ok
+              println(stderr, "JuliaFormatter produced changes; run `using JuliaFormatter; format(\".\")` and commit.")
+              exit(1)
+            end
+          '
