@@ -97,7 +97,10 @@ function toggle_recording!(m::SelectorSession)
     t === nothing && return nothing
     rec = t.recorder
     if rec.active
-        finish_recording!(rec)
+        name = finish_recording!(rec)
+        if !isempty(name)
+            notify!(m, "Saved recording to $name")
+        end
     else
         Tachikoma.start_recording!(
             rec, t.size.width, t.size.height;
@@ -148,7 +151,10 @@ has been fully restored.
 function Tachikoma.cleanup!(m::SelectorSession)
     t = m.terminal
     t === nothing && return nothing
-    finish_recording!(t.recorder)
+    name = finish_recording!(t.recorder)
+    if !isempty(name)
+        println("Saved recording to $name")
+    end
     return nothing
 end
 
