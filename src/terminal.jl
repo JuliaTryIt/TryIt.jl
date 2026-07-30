@@ -45,3 +45,34 @@ function check_min_terminal_size(io::IO=stdout)
     (rows >= 10 && cols >= 40) && return nothing
     return "terminal too small (min 40×10)"
 end
+
+"""
+Run `f` while routing the global stdout stream to the terminal.
+
+The shell integration captures stdout and evaluates it after the Julia
+process exits. Tachikoma normally renders through `/dev/tty`, but its
+startup pixel-size probes are emitted on the global stdout stream before
+that rendering channel is installed. Keeping stdout terminal-bound for
+the whole TUI call prevents those escape sequences from being prepended
+to the shell command.
+"""
+function _with_terminal_stdout(f::Function, io::IO)
+    return redirect_stdout(f, io)
+end
+
+function _with_terminal_stdout(f::Function)
+    @static if Sys.iswindows()
+        return _with_terminal_stdout(f, stderr)
+    else
+        tty = try
+            open("/dev/tty", "w")
+        catch
+            return _with_terminal_stdout(f, stderr)
+        end
+        try
+            return _with_terminal_stdout(f, tty)
+        finally
+            close(tty)
+        end
+    end
+end

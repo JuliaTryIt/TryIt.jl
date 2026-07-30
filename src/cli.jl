@@ -472,7 +472,9 @@ function _dispatch_selector_or_usage()::Int
     # them and providing our own theme, about, and help overlays.
     # `fps` is configurable because the animated background costs one
     # repaint of every cell it covers per frame — see `configured_fps`.
-    app(session; default_bindings=false, fps=configured_fps())
+    _with_terminal_stdout() do
+        app(session; default_bindings=false, fps=configured_fps())
+    end
     # Tachikoma has exited by now; terminal is restored, stdout is live.
     # Run the deferred-delete confirmation BEFORE emitting any `cd` so the
     # prompt on stderr precedes the shell-evaluable output on stdout

@@ -17,6 +17,29 @@
     @test findfirst("case \"\$1\" in", out) < findfirst("__try_cmd=", out)
 end
 
+@testitem "cli: terminal probes do not contaminate the shell command" begin
+    using TryIt: _with_terminal_stdout
+
+    mktemp() do _, shell_io
+        mktemp() do _, terminal_io
+            redirect_stdout(shell_io) do
+                _with_terminal_stdout(terminal_io) do
+                    print(stdout, "\e[16t\e[14t")
+                end
+                print(stdout, "cd '/tmp/example'\n")
+            end
+
+            flush(shell_io)
+            flush(terminal_io)
+            seekstart(shell_io)
+            seekstart(terminal_io)
+
+            @test read(shell_io, String) == "cd '/tmp/example'\n"
+            @test read(terminal_io, String) == "\e[16t\e[14t"
+        end
+    end
+end
+
 @testitem "cli: informational subcommands run under a real shell" begin
     using TryIt
     using TryIt: emit_shell_init
