@@ -75,6 +75,26 @@ end
     end
 end
 
+@testitem "theming: pulse limits full-screen colour churn" begin
+    using TryIt: PulseBackground, render_selector_background!
+    using Tachikoma
+
+    background = PulseBackground()
+    rect = Tachikoma.Rect(1, 1, 24, 8)
+    fingerprints = Set{UInt}()
+    for tick in 1:background.period
+        buf = Tachikoma.Buffer(rect)
+        render_selector_background!(background, buf, rect, tick)
+        colours = [buf.content[Tachikoma.buf_index(buf, x, y)].style.bg
+                   for y in 1:8, x in 1:24]
+        push!(fingerprints, hash(colours))
+    end
+
+    # Pulse repaints every cell at once. A bounded number of visual levels
+    # keeps its three-second cycle smooth without flooding a real terminal.
+    @test 3 <= length(fingerprints) <= 25
+end
+
 @testitem "theming: TRY_ANIMATION is accepted alongside TRY_BACKGROUND" begin
     using TryIt: background_from_env, ColorBackground, FogBackground
 

@@ -184,7 +184,13 @@ end
 
 function render_selector_background!(bg::PulseBackground, buf, area, tick::Int)
     base, c1, c2, c3, c4 = _palette()
-    amount = Tachikoma.breathe(tick; period=bg.period) * bg.intensity
+    # Pulse changes every full-screen cell at once. Keeping a small number of
+    # visual levels lets the terminal diff skip identical frames instead of
+    # emitting several megabytes of true-colour ANSI data per second.
+    pulse_levels = 12
+    phase = round(Tachikoma.breathe(tick; period=bg.period) * pulse_levels) /
+            pulse_levels
+    amount = phase * bg.intensity
     for y in (area.y):(area.y + area.height - 1),
         x in (area.x):(area.x + area.width - 1)
 

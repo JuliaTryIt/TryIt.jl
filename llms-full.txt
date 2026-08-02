@@ -57,9 +57,15 @@ projections preserve effect identity and animation intent, but are not expected
 to produce pixel-identical cell and CSS output. `off` disables painting.
 
 The active Tachikoma theme supplies the ManyUI TUI foreground, dim, title,
-border, and modal colours. Theme (`Ctrl+T`), animation (`Ctrl+B`), About
-(`Ctrl+A`), and Help (`?`) open centered modal windows. Picker movement previews
-the choice; Enter confirms and Escape restores the previous value.
+and border colours. Theme (`Ctrl+T`), animation (`Ctrl+B`), About (`Ctrl+A`),
+and Help (`?`) open centered, transparent modal windows, leaving the animated
+background visible. Picker movement previews the choice; Enter confirms and
+Escape restores the previous value.
+
+The two-column language legend keeps its stable badge palette in TUI, WebTUI,
+and WebNative. The `pulse` effect uses a bounded set of colour levels so
+unchanged ticks generate no terminal diff and slower terminal emulators are not
+flooded by full-screen true-colour frames.
 
 ## Development
 

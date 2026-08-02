@@ -97,7 +97,7 @@ end
         path = joinpath(dir, "config.toml")
         write(path, "fps = 20\ntries_path = \"~/src/tries\"\n")
         withenv("TRY_FPS" => nothing) do
-            save_settings("nord", "pulse", path)
+            save_settings("nord", "pulse", 0.25, path)
             cfg = read_config(path)
             @test cfg["theme"] == "nord"
             @test cfg["animation"] == "pulse"

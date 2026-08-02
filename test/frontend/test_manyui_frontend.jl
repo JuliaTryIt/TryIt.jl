@@ -153,7 +153,7 @@ end
         end
 
         @test widget_by_id(ui, :preview) isa ManyUI.List
-        @test widget_by_id(ui, :legend) isa ManyUI.List
+        @test widget_by_id(ui, :legend) isa TryIt.SelectorLegendWidget
         for id in (:delete, :rename, :graduate, :theme, :about, :help)
             @test widget_by_id(ui, id) isa ManyUI.Button
         end
@@ -167,6 +167,29 @@ end
         @test any(contains("src"), preview.items)
         @test any(contains("Project.toml"), preview.items)
     end
+end
+
+@testitem "frontend: language legends keep their colours in every projection" begin
+    using TryIt
+    const ManyUI = TryIt.ManyUI
+    const ManyUITUI = TryIt.ManyUITUI
+    const ManyUIWeb = TryIt.ManyUIWeb
+
+    legend = TryIt.SelectorLegendWidget()
+    buffer = ManyUITUI.Buffer(ManyUI.Size(34, 6))
+    ManyUITUI.render!(legend, buffer)
+
+    rust = TryIt._manyui_style(TryIt.BADGE_STYLES[:rust])
+    julia = TryIt._manyui_style(TryIt.BADGE_STYLES[:julia])
+    @test buffer[1, 1].content == string(TryIt.BADGE_GLYPH)
+    @test buffer[1, 1].style.fg == rust.fg
+    @test buffer[18, 1].content == string(TryIt.BADGE_GLYPH)
+    @test buffer[18, 1].style.fg == julia.fg
+
+    html = ManyUIWeb.to_html(legend)
+    @test occursin("class=\"tryit-legend-glyph\"", html)
+    @test occursin("color: rgb(222,89,63)", html)
+    @test occursin("color: rgb(149,88,178)", html)
 end
 
 @testitem "frontend: terminal backgrounds use the Tachikoma reference engine" begin
@@ -218,6 +241,7 @@ end
         screen = ManyUI.query_one(ui, "#screen")
         title = ManyUI.query_one(ui, "#search_title")
         help = ManyUI.query_one(ui, "#key_help")
+        legend = ManyUI.query_one(ui, "#legend")
         theme = Tachikoma.theme()
         css_color(c) = let rgb = Tachikoma.to_rgb(c)
             ManyUI.rgb(rgb.r, rgb.g, rgb.b)
@@ -225,6 +249,7 @@ end
         @test ManyUI.computed_style(screen).fg == css_color(theme.text)
         @test ManyUI.computed_style(title).fg == css_color(theme.title)
         @test ManyUI.computed_style(help).fg == css_color(theme.text_dim)
+        @test ManyUI.computed_style(legend).fg == css_color(theme.text_dim)
     finally
         TryIt.apply_theme!(original)
     end
@@ -256,6 +281,7 @@ end
         expected = ManyUI.popup_region(ManyUI.region(ui), popup.size,
             ManyUI.PopupPlacement.CENTER, ManyUI.Size(80, 30))
         @test ManyUI.region(popup.content) == expected
+        @test ManyUI.is_unset(ManyUI.computed_style(popup.content).bg)
 
         before = Tachikoma.theme().name
         ManyUITUI.handle!(app, ManyUI.key(ManyUI.Key.DOWN))
@@ -291,6 +317,9 @@ end
     @test ManyUI.popup_of(about) !== nothing
     @test ManyUI.popup_of(about).placement === ManyUI.PopupPlacement.CENTER
     @test ManyUI.node(ManyUI.popup_of(about).content).id === :about_dialog
+    ManyUITUI.frame!(about)
+    @test ManyUI.is_unset(
+        ManyUI.computed_style(ManyUI.popup_of(about).content).bg)
     filter = ManyUI.query_one(about.root, "#filter")
     ManyUITUI.focus!(about, filter)
     ManyUITUI.handle!(about, ManyUI.key('x'))
@@ -301,6 +330,9 @@ end
     @test ManyUI.popup_of(help) !== nothing
     @test ManyUI.popup_of(help).placement === ManyUI.PopupPlacement.CENTER
     @test ManyUI.node(ManyUI.popup_of(help).content).id === :help_dialog
+    ManyUITUI.frame!(help)
+    @test ManyUI.is_unset(
+        ManyUI.computed_style(ManyUI.popup_of(help).content).bg)
 
     native_session = TryIt.open_session(
         TryIt.TriesPath(positional=mktempdir()); tachikoma=false)
@@ -310,6 +342,8 @@ end
     html = TryIt.ManyUIWeb.to_html(native_ui)
     @test occursin("id=\"modal_layer\"", html)
     @test occursin("id=\"native_about_dialog\"", html)
+    @test occursin("#modal_layer .modal", html)
+    @test occursin("background: transparent !important", html)
     @test TryIt.ManyUIWeb.process_native_event!(native_ui,
         (id="tryit_background", event="key", value="escape"))
     @test !occursin("id=\"modal_layer\"", TryIt.ManyUIWeb.to_html(native_ui))
@@ -336,6 +370,8 @@ end
     @test popup.placement === ManyUI.PopupPlacement.CENTER
     @test ManyUI.node(popup.content).id === :animation_dialog
     @test session.mode === :animation
+    ManyUITUI.frame!(app)
+    @test ManyUI.is_unset(ManyUI.computed_style(popup.content).bg)
 
     ManyUITUI.handle!(app, ManyUI.key(ManyUI.Key.DOWN))
     @test TryIt.background_name(ui.effect) == TryIt.BACKGROUND_NAMES[2]

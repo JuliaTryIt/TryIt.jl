@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Project-language legends now retain their stable badge colours in TUI,
+  WebTUI, and WebNative instead of being flattened into monochrome list text.
+- The `pulse` background uses a bounded set of visual levels, allowing the
+  terminal diff to skip identical frames instead of saturating slower terminal
+  emulators and making the selector appear frozen.
+- Theme, animation, About, and Help modal windows are transparent in every
+  ManyUI projection, so the active animated background remains visible.
 - The selector now uses the common `isopen`/`close`/`wait` handle contract
   directly for every backend; the WebNative-specific lifecycle adapter was
   removed after `ManyUIWeb.WebNativeServer` gained `Base.isopen`.

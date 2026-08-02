@@ -163,6 +163,24 @@ end
 ManyUI.on_popup_close!(w::SelectorBackgroundWidget)::Nothing =
     (w.on_popup_close(); nothing)
 
+"A backend-neutral, two-column legend with a stable colour per badge."
+mutable struct SelectorLegendWidget <: ManyUI.Widget
+    node::ManyUI.WidgetNode
+    badges::Vector{Symbol}
+end
+
+function SelectorLegendWidget(; id::Symbol=:legend,
+        badges::AbstractVector{Symbol}=BADGE_ORDER)
+    return SelectorLegendWidget(
+        ManyUI.WidgetNode(; id=id, classes=[:tryit_legend],
+            type_name=:SelectorLegend),
+        collect(badges))
+end
+
+# Like a List, the legend consumes the area offered by its panel.
+ManyUI.measure(::SelectorLegendWidget, available::ManyUI.Size)::ManyUI.Size =
+    available
+
 "A zero-sized TUI sibling projected as a fixed modal layer by WebNative."
 mutable struct SelectorModalLayer <: ManyUI.Widget
     node::ManyUI.WidgetNode
@@ -230,6 +248,27 @@ function ManyUITUI.render!(w::SelectorBackgroundWidget,
     return nothing
 end
 
+function ManyUITUI.render!(w::SelectorLegendWidget,
+        buf::AbstractMatrix{ManyUITUI.Cell})::Nothing
+    width, height = size(buf)
+    (width <= 0 || height <= 0) && return nothing
+    column_width = max(1, div(width, LEGEND_COLUMNS))
+    base_style = ManyUI.computed_style(w)
+
+    for (i, badge) in enumerate(w.badges)
+        row = cld(i, LEGEND_COLUMNS)
+        column = mod(i - 1, LEGEND_COLUMNS)
+        row > height && break
+        x = 1 + column * column_width
+        badge_style = merge(base_style,
+            _manyui_style(get(BADGE_STYLES, badge, Tachikoma.tstyle(:text))))
+        x += ManyUITUI.write_text!(buf, x, row,
+            string(BADGE_GLYPH, ' '), badge_style)
+        ManyUITUI.write_text!(buf, x, row, BADGE_LABELS[badge], base_style)
+    end
+    return nothing
+end
+
 const _WEB_BACKGROUND_CSS = """
 <style>
 @keyframes tryit-drift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
@@ -251,7 +290,10 @@ body::before, body::after { display: none !important; }
 #disk_panel, #legend_panel { flex: 0 0 auto; }
 #disk { padding: .35rem .55rem; color: var(--tryit-dim); font-size: .82rem; text-align: left; }
 #folders, #preview, #legend { width: 100%; height: 100%; overflow: auto; border: 0; border-radius: 0; background: transparent; }
-#folders .manyui-list-item, #preview .manyui-list-item, #legend .manyui-list-item { padding: .18rem .55rem; border: 0; color: var(--tryit-text); font-size: .82rem; line-height: 1.25rem; }
+#folders .manyui-list-item, #preview .manyui-list-item { padding: .18rem .55rem; border: 0; color: var(--tryit-text); font-size: .82rem; line-height: 1.25rem; }
+#legend { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; box-sizing: border-box; padding: .18rem .55rem; color: var(--tryit-dim); font-size: .82rem; line-height: 1.25rem; }
+.tryit-legend-item { min-width: 0; white-space: nowrap; }
+.tryit-legend-glyph { font-weight: 700; }
 #folders .manyui-list-selected { padding-left: .35rem; border-left: .2rem solid var(--tryit-accent); background: var(--tryit-selected) !important; }
 #preview .manyui-list-selected, #legend .manyui-list-selected { border-left: 0; background: transparent !important; font-weight: normal; }
 #footer { display: flex !important; flex-direction: row !important; flex: 0 0 auto; align-items: center; min-height: 2rem; gap: .5rem; background: var(--tryit-panel) !important; border-top: 1px solid var(--tryit-border) !important; }
@@ -260,8 +302,8 @@ body::before, body::after { display: none !important; }
 #actions .manyui-button { padding: .25rem .45rem; border: 0; border-radius: 0; background: transparent; color: var(--tryit-dim); box-shadow: none; font: 700 .72rem/1rem ui-monospace, monospace; }
 #actions .manyui-button:hover { transform: none; color: var(--tryit-accent); background: var(--tryit-selected); box-shadow: none; }
 #status { padding: .25rem .5rem; color: var(--tryit-dim); font-size: .72rem; white-space: nowrap; text-align: right; }
-#modal_layer { position: fixed; inset: 0; z-index: 20; display: flex !important; align-items: center !important; justify-content: center !important; padding: 1rem; background: rgba(0, 0, 0, .28) !important; }
-#modal_layer .modal { display: flex !important; flex-direction: column !important; width: min(34rem, calc(100vw - 2rem)); max-height: calc(100vh - 2rem); padding: .65rem; border: 1px solid var(--tryit-accent); background: var(--tryit-base) !important; color: var(--tryit-text); box-shadow: 0 1rem 3rem rgba(0, 0, 0, .35); }
+#modal_layer { position: fixed; inset: 0; z-index: 20; display: flex !important; align-items: center !important; justify-content: center !important; padding: 1rem; background: transparent !important; }
+#modal_layer .modal { display: flex !important; flex-direction: column !important; width: min(34rem, calc(100vw - 2rem)); max-height: calc(100vh - 2rem); padding: .65rem; border: 1px solid var(--tryit-accent); background: transparent !important; color: var(--tryit-text); box-shadow: 0 1rem 3rem rgba(0, 0, 0, .35); }
 #modal_layer .modal_title { color: var(--tryit-title); font-weight: 700; }
 #modal_layer .modal_hint { color: var(--tryit-dim); }
 #modal_layer .manyui-list { min-height: 8rem; overflow: auto; }
@@ -582,6 +624,17 @@ function ManyUIWeb.to_html(w::SelectorModalLayer)
     return "<div id=\"modal_layer\" class=\"modal_layer\">$inner</div>"
 end
 
+function ManyUIWeb.to_html(w::SelectorLegendWidget)
+    items = map(w.badges) do badge
+        colour = _css_rgb(get(BADGE_STYLES, badge,
+            Tachikoma.tstyle(:text)).fg)
+        string("<div class=\"tryit-legend-item\"><span aria-hidden=\"true\" ",
+            "class=\"tryit-legend-glyph\" style=\"color: ", colour, "\">",
+            BADGE_GLYPH, "</span> ", BADGE_LABELS[badge], "</div>")
+    end
+    return "<div id=\"$(ManyUI.node(w).id)\" class=\"tryit-legend\">$(join(items))</div>"
+end
+
 function ManyUIWeb.process_native_event!(root::SelectorBackgroundWidget, data)::Bool
     if String(data.id) == "tryit_background" && String(data.event) == "key"
         value = hasproperty(data, :value) ? data.value : nothing
@@ -622,7 +675,6 @@ function manyui_selector_stylesheet()
     dim = _css_rgb(theme.text_dim)
     title = _css_rgb(theme.title)
     accent = _css_rgb(theme.accent)
-    background = _css_rgb(theme.bg)
     return ManyUITUI.parse_css("""
     #screen        { layout: column; width: 100%; height: 100%; gap: 0; color: $text; }
     #main          { layout: row; grow: 1; gap: 0; }
@@ -639,12 +691,12 @@ function manyui_selector_stylesheet()
     #preview_panel { grow: 1; }
     #preview       { grow: 1; }
     #legend_panel  { height: 9; shrink: 0; }
-    #legend        { grow: 1; }
+    #legend        { color: $dim; grow: 1; }
     #footer        { layout: row; height: 1; shrink: 0; }
     #actions       { display: none; }
     #key_help      { color: $dim; grow: 1; }
     #status        { display: none; }
-    .modal         { layout: column; color: $text; background: $background; border: round $accent; padding: 1; }
+    .modal         { layout: column; color: $text; background: transparent; border: round $accent; padding: 1; }
     .modal_title   { color: $title; text-style: bold; height: 1; shrink: 0; }
     .modal_hint    { color: $dim; height: 1; shrink: 0; }
     #theme_list, #animation_list { grow: 1; }
@@ -673,10 +725,6 @@ function _manyui_preview_items(m::SelectorSession)
     refresh_panels!(m)
     isempty(m.preview) && return [isempty(m.preview_path) ? "No selection" : "empty"]
     return [entry.isdir ? "▸ $(entry.name)" : "  $(entry.name)" for entry in m.preview]
-end
-
-function _manyui_legend_items()
-    return ["● $(BADGE_LABELS[badge])" for badge in BADGE_ORDER]
 end
 
 function _manyui_disk(m::SelectorSession)
@@ -854,7 +902,7 @@ function manyui_selector(m::SelectorSession;
     preview_panel = ManyUI.Container(
         ManyUI.Label("Preview"; id=:preview_title, classes=[:panel_title]),
         preview; id=:preview_panel, classes=[:panel])
-    legend = ManyUI.List(_manyui_legend_items(); id=:legend)
+    legend = SelectorLegendWidget()
     legend_panel = ManyUI.Container(
         ManyUI.Label("Legends"; id=:legend_title, classes=[:panel_title]),
         legend; id=:legend_panel, classes=[:panel])

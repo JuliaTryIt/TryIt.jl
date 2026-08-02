@@ -62,12 +62,16 @@ The selector root always accepts the complete backend viewport. TUI and
 WebTUI therefore resize beyond their former 80x24 intrinsic area, and the
 animation starts only after the application is actually open.
 
+The project-language legend is also backend-neutral. Its badge symbols retain
+the reference palette in terminal cells and are projected as coloured DOM
+spans by WebNative, while labels follow the active theme's dim text colour.
+
 ## Themes and modal windows
 
 The terminal stylesheet is rebuilt from the active Tachikoma palette. Text,
-dimmed shortcuts, titles, borders, and the opaque modal surface therefore keep
-the same contrast as the reference selector even when an animated light
-background is visible through the ordinary panels.
+dimmed shortcuts, titles, and borders therefore keep the same contrast as the
+reference selector. Modal surfaces are transparent in TUI, WebTUI, and
+WebNative, allowing the animated background to remain visible through them.
 
 `Ctrl+T` opens the theme picker and `Ctrl+B` opens the animation picker.
 Moving with `↑`/`↓` previews the highlighted choice, `Enter` keeps it, and

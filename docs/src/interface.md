@@ -73,7 +73,9 @@ in the top border shows cursor position within the filtered list.
 root. `df` is unavailable on Windows, where this panel reads
 `unavailable` rather than failing.
 
-**Legends** — the badge colour key.
+**Legends** — the badge colour key. Its two-column entries keep the same
+language colours in TUI, WebTUI, and WebNative; the projection no longer
+flattens them into monochrome list text.
 
 On terminals narrower than 64 columns the right-hand column is
 dropped entirely so the folder list stays usable.
@@ -203,6 +205,8 @@ the session. An unknown `TRY_THEME` is ignored rather than fatal.
 
 In the ManyUI frontends the theme picker is a centered modal window, as are
 the `Ctrl+B` animation picker, `Ctrl+A` About window, and `?` help window.
+Their surfaces are transparent, retaining only the themed border and text, so
+the current background effect remains visible through each window.
 The TUI palette is regenerated as themes are previewed, so foreground and
 title contrast changes immediately together with the animated background.
 
@@ -285,9 +289,10 @@ animation = "pulse" # a near-uniform background: far fewer cache misses
 animation = "off"   # no background at all
 ```
 
-`pulse` is the quietest of the colour family and `off` removes the cost
-outright. Between them, `fps` scales everything linearly and leaves the
-animation intact.
+`pulse` is the quietest of the colour family: its slow cycle uses a bounded set
+of colour levels, so unchanged ticks produce no terminal diff at all. `off`
+removes the cost outright. Between them, `fps` scales everything linearly and
+leaves the animation intact.
 
 ## Documentation in the terminal
 
