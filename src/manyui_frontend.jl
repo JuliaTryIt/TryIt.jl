@@ -1150,16 +1150,9 @@ function _launch_manyui(factory, frontend::WebTUIFrontend)
         stylesheet=manyui_selector_stylesheet(), wait=false)
 end
 
-_selector_handle_isopen(handle) = isopen(handle)
-
-# ManyUIWeb 0.1's WebNative handle predates the common launch-handle contract:
-# it has close/wait but no Base.isopen method. Keep the compatibility shim at
-# this boundary instead of extending a foreign function for a foreign type.
-_selector_handle_isopen(handle::ManyUIWeb.WebNativeServer) = isopen(handle.http_server)
-
 function _drive_manyui!(handle, m::SelectorSession)
     try
-        while _selector_handle_isopen(handle) && !m.done
+        while isopen(handle) && !m.done
             sleep(0.05)
         end
     catch err
@@ -1170,7 +1163,7 @@ function _drive_manyui!(handle, m::SelectorSession)
             rethrow()
         end
     finally
-        _selector_handle_isopen(handle) && close(handle)
+        isopen(handle) && close(handle)
         try
             wait(handle)
         catch err

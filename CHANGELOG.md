@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The selector now uses the common `isopen`/`close`/`wait` handle contract
+  directly for every backend; the WebNative-specific lifecycle adapter was
+  removed after `ManyUIWeb.WebNativeServer` gained `Base.isopen`.
 - The ManyUI TUI now derives its foreground, dim, title, border, and modal
   colours from the active Tachikoma theme. Light animated backgrounds no
   longer inherit the terminal's pale default foreground.
