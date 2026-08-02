@@ -8,11 +8,19 @@ CommonMark = "a80b9123-70ca-4bc0-993e-6e3bcb318db6"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
 Downloads = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
+ManyUI = "4f14d67d-91c5-4d6b-929d-6ac291535b21"
+ManyUITUI = "5c52c6f3-12e3-46fb-a0b2-3b2e56cfefb8"
+ManyUIWeb = "860779a1-443a-41b2-91c8-bd1f5a115e61"
 PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
 REPL = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 Tachikoma = "468859d6-42d8-48b7-8ad9-1d312e0e3b0a"
 Unicode = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
+
+[sources]
+ManyUI = {url = "https://github.com/s-celles/ManyUI.jl.git"}
+ManyUITUI = {url = "https://github.com/s-celles/ManyUITUI.jl.git"}
+ManyUIWeb = {url = "https://github.com/s-celles/ManyUIWeb.jl.git"}
 
 [weakdeps]
 PluginGuard = "9fbe1cae-3473-4993-a645-bc3c67a12de8"
@@ -25,6 +33,9 @@ CommonMark = "1.0.2"
 Dates = "1"
 DocStringExtensions = "0.9"
 Downloads = "1"
+ManyUI = "0.1"
+ManyUITUI = "0.1"
+ManyUIWeb = "0.1"
 PluginGuard = "0.1"
 PrecompileTools = "1"
 REPL = "1"

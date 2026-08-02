@@ -416,3 +416,10 @@ theme_names() = [t.name for t in vcat(Tachikoma.ALL_THEMES..., TRY_THEMES...)]
 animation_name(::Tachikoma.DotWaveBackground) = "dotwave"
 animation_name(::Tachikoma.PhyloTreeBackground) = "phylo"
 animation_name(::Tachikoma.CladogramBackground) = "clado"
+
+# Tachikoma's glyph backgrounds have no opacity field. They still pass through
+# the shared opacity control so switching between color and glyph effects does
+# not require a backend-specific branch.
+with_intensity(bg::Tachikoma.DotWaveBackground, _) = bg
+with_intensity(bg::Tachikoma.PhyloTreeBackground, _) = bg
+with_intensity(bg::Tachikoma.CladogramBackground, _) = bg

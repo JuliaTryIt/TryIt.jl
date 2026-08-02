@@ -457,15 +457,17 @@ snapshot of existing tries.
 
 EARS coverage: ED1.
 """
-function open_session(root::TriesPath)
+function open_session(root::TriesPath; tachikoma::Bool=true)
     m = SelectorSession(root=root)
     m.all_tries = list_tries(root)
     # Config is read once here rather than per frame: `apply_theme!`
     # mutates a Tachikoma global, and re-reading ENV every frame would
     # fight the in-app theme picker (Ctrl-\), which is allowed to win
     # for the rest of the session.
-    apply_theme_from_env!()
-    m.background = background_from_env()
+    if tachikoma
+        apply_theme_from_env!()
+        m.background = background_from_env()
+    end
     m.show_fps = configured_show_fps()
     refresh_visible!(m)
     return m

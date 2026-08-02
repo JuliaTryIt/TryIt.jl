@@ -1,0 +1,26 @@
+# TryIt.jl
+
+> A Julia CLI for creating, browsing, and promoting ephemeral workspaces.
+
+TryIt uses one high-level ManyUI selector application and projects it to a
+local TUI, native web controls, or a browser-hosted terminal. A legacy
+Tachikoma selector remains available while the migration is completed.
+
+## Documentation
+
+- [Getting started](docs/src/getting-started.md): installation, shell setup,
+  commands, and configuration.
+- [Selector interface](docs/src/interface.md): keyboard interactions, themes,
+  backgrounds, and maintenance actions.
+- [ManyUI frontends](docs/src/frontends.md): TUI, WebNative, WebTUI, embedding,
+  and the backend-neutral background contract.
+- [Reference](docs/src/reference.md): Julia API reference.
+- [Development](docs/src/development.md): tests, documentation, and releases.
+
+## Key entry points
+
+- `TryIt.main(args)`: process-level CLI entry point.
+- `TryIt.launch_selector(; frontend, port, root)`: launch the shared selector
+  with `:tui`, `:webnative`, `:webtui`, or `:tachikoma`.
+- `TRY_FRONTEND`: select the runtime projection.
+- `TRY_BACKGROUND`: select a portable background effect.

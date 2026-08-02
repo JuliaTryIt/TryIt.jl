@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The selector now has a ManyUI-first application path shared by local TUI,
+  WebNative, and WebTUI projections. `TRY_FRONTEND` selects `tui` (the new
+  default), `webnative`, `webtui`, or the temporary legacy `tachikoma` path;
+  `TRY_WEB_PORT` configures either web target. The programmatic
+  `launch_selector` entry point accepts the same targets.
+
+- TryIt backgrounds now have a backend-neutral
+  `SelectorBackgroundEffect` and a compositing `SelectorBackgroundWidget`.
+  All color and glyph effects project to terminal cells for TUI/WebTUI and
+  animated CSS for WebNative, leaving a renderer seam for a future Dear ImGui
+  draw-list projection.
+
 ### Changed
 
 - `Slug`'s conversion and hashing methods are covered, restoring the

@@ -14,8 +14,9 @@ your terminal.
 
 ## Inspiration
 
-TryIt.jl is a functional mirror of two prior tools, with a TUI built
-on [Tachikoma.jl](https://github.com/kahliburke/Tachikoma.jl):
+TryIt.jl is a functional mirror of two prior tools, with one high-level
+[ManyUI](https://github.com/s-celles/ManyUI.jl) application projected to a
+local TUI, native browser controls, or a browser-hosted terminal:
 
 - [`try`](https://github.com/tobi/try) by Tobi Lütke — the original,
   distributed as the [`try-cli` gem](https://rubygems.org/gems/try-cli).
@@ -36,8 +37,8 @@ stdout.
 
 ## Status
 
-Pre-stable (0.x). The public surface is intentionally minimal — the
-only exported entry point is `main`.
+Pre-stable (0.x). The exported entry points are the CLI-oriented `main` and
+the embeddable `launch_selector`.
 
 ## Install
 
@@ -82,12 +83,14 @@ matching shell function, so the same command works for both.
 | `TRY_EDITOR`   | Editor launched on a try                          |
 | `TRY_TEMPLATE` | Directory copied into each new try                |
 | `TRY_THEME`    | Startup theme, any of 24 (`Ctrl+T` picks live)   |
-| `TRY_BACKGROUND` | Animated background: `wash` (default), `dotwave`, `phylo`, `clado`, `off` |
+| `TRY_BACKGROUND` | Animated background: `fog` (default), `aurora`, `plasma`, `rain`, `pulse`, `mesh`, `dotwave`, `phylo`, `clado`, `off` |
 | `TRY_BACKGROUND_PRESET` | Variant index for the glyph backgrounds |
 | `TRY_ANIMATION`| Alias for `TRY_BACKGROUND`                        |
 | `TRY_CONFIG`   | Config file path (default `~/.config/tryit/config.toml`) |
 | `TRY_FPS`      | Frame rate for the selector (default `60`)        |
 | `TRY_SHOW_FPS` | Show an on-screen frames-per-second readout       |
+| `TRY_FRONTEND` | Selector target: `tui` (default), `webnative`, `webtui`, or legacy `tachikoma` |
+| `TRY_WEB_PORT` | Port for WebNative/WebTUI (default `8000`)        |
 | `TRY_TIMEZONE` | Date zone: `local` (default) or `utc`             |
 | `NO_COLOR`     | Disables colored output                           |
 
@@ -99,6 +102,13 @@ over the file:
 tries_path = "~/src/tries"   # `~` is expanded
 theme = "dracula"
 animation = "plasma"
+```
+
+The same selector can be launched directly from Julia:
+
+```julia
+using TryIt
+launch_selector(frontend=:webnative, port=8080)
 ```
 
 `tries_path` matters most when sharing a root with `try-rs`, whose own

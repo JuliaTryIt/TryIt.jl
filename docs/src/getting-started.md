@@ -189,7 +189,7 @@ on it.
 | `TRY_EDITOR`            | Editor launched when opening a try.                                    |                                       |
 | `TRY_TEMPLATE`          | Directory copied as a template into each new try.                      |                                       |
 | `TRY_THEME`             | Startup theme.                                                         |                                       |
-| `TRY_BACKGROUND`        | Animated background (`fog`, `wash`, `dotwave`, `phylo`, `clado`, `off`).| `fog`                                 |
+| `TRY_BACKGROUND`        | Animated background (`fog`, `aurora`, `plasma`, `rain`, `pulse`, `mesh`, `dotwave`, `phylo`, `clado`, `off`).| `fog`                                 |
 | `TRY_BACKGROUND_PRESET` | Variant index for glyph backgrounds.                                   |                                       |
 | `TRY_ANIMATION`         | Alias for `TRY_BACKGROUND`.                                            |                                       |
 | `TRY_CONFIG`            | Configuration file path.                                               | `~/.config/tryit/config.toml`         |

@@ -1,0 +1,67 @@
+# TryIt.jl — condensed documentation
+
+TryIt manages short-lived Julia workspaces called tries. The CLI creates tries,
+lists and filters them, opens a selected directory through a shell integration,
+and can graduate useful work into a projects directory.
+
+## Installation and shell integration
+
+Install the package from its repository, then evaluate the shell setup emitted
+by `tryit init`. The shell wrapper is responsible for applying the `cd` command
+printed by the Julia process; diagnostics and interactive frontend output stay
+off stdout so this protocol remains safe.
+
+The main configuration variables are:
+
+- `TRY_PATH`: root directory containing tries.
+- `TRY_PROJECTS`: graduation destination.
+- `TRY_EDITOR`: editor command used for a try.
+- `TRY_TEMPLATE`: optional directory copied into a new try.
+- `TRY_FRONTEND`: `tui` by default, or `webnative`, `webtui`, `tachikoma`.
+- `TRY_WEB_PORT`: web frontend port, `8000` by default.
+- `TRY_BACKGROUND`: `fog`, `aurora`, `plasma`, `rain`, `pulse`, `mesh`,
+  `dotwave`, `phylo`, `clado`, or `off`.
+- `TRY_BACKGROUND_PRESET`: positive glyph-effect variant index.
+- `TRY_FPS`: requested animation frame rate.
+
+## ManyUI application architecture
+
+`manyui_selector(session)` constructs one backend-neutral ManyUI widget tree.
+It contains the filter input, try list, open/create/refresh/quit actions, status,
+preview, and a compositing background root. Widget callbacks mutate the existing
+`SelectorSession`, so filesystem and shell lifecycle behavior stays independent
+from rendering.
+
+`launch_selector(; frontend=:tui, port=8000, root=TriesPath())` is the embedding
+entry point. Frontend values resolve to:
+
+- `ManyUITUIFrontend`: local terminal projection through ManyUITUI.
+- `WebNativeFrontend`: native DOM projection through ManyUI WebNative.
+- `WebTUIFrontend`: ManyUITUI cells transported by ManyUIWeb.
+- `TachikomaFrontend`: temporary compatibility path for the original selector.
+
+The ManyUI application is the primary path. New projections, including a future
+Dear ImGui backend, should implement the frontend launch seam without adding
+renderer types to selector state.
+
+## Portable background effects
+
+`SelectorBackgroundEffect` carries only a symbolic name, intensity, and preset.
+`SelectorBackgroundWidget` owns that value and paints before its child content.
+ManyUITUI projects it to terminal cells, WebTUI transports those cells, and
+WebNative projects it to animated CSS. A future backend can translate the same
+effect to its native drawing operations.
+
+Colour and glyph effects are accepted in every current ManyUI projection. The
+projections preserve effect identity and animation intent, but are not expected
+to produce pixel-identical cell and CSS output. `off` disables painting.
+
+## Development
+
+Use `just test` for package tests, `just docs` for documentation, and
+`just format` for Julia formatting. Tests use TestItemRunner. Notable changes
+belong in `CHANGELOG.md`, and user-facing features belong in `docs/`.
+
+See the complete source documentation under `docs/src/`, especially
+`docs/src/frontends.md`, `docs/src/interface.md`, and
+`docs/src/getting-started.md`.

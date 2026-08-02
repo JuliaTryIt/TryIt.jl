@@ -166,4 +166,3 @@ with_intensity(bg::PlasmaBackground, i) = PlasmaBackground(bg.speed, bg.scale, i
 with_intensity(bg::RainBackground, i) = RainBackground(bg.speed, i)
 with_intensity(bg::PulseBackground, i) = PulseBackground(bg.period, i)
 with_intensity(bg::MeshBackground, i) = MeshBackground(bg.speed, bg.scale, i)
-

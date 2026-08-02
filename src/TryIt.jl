@@ -3,8 +3,8 @@
 
 Ephemeral-workspace manager CLI.
 
-Public surface is intentionally minimal: the only exported entry
-point is [`main`](@ref). Everything else is internal.
+Public surface is intentionally minimal: the exported entry points are
+[`main`](@ref) and [`launch_selector`](@ref). Everything else is internal.
 
 For the compiled standalone build, [`julia_main`](@ref) is the
 PackageCompiler entry point.
@@ -18,6 +18,9 @@ using CommonMark
 using TOML
 using Tachikoma
 using Unicode
+import ManyUI
+import ManyUITUI
+import ManyUIWeb
 
 # Bring the Tachikoma callback names (update!, view, should_quit)
 # into scope so we can extend them with our own methods below.
@@ -65,8 +68,8 @@ end # module Core
 
 # Re-export Core's whole surface, underscored internals included.
 #
-# Core is an internal layer boundary, not a public API: the package's
-# public surface is still `main` alone. Every name therefore stays
+# Core is an internal layer boundary, not a public API: the package's public
+# surface is `main` plus the high-level `launch_selector`. Every other name stays
 # reachable as `TryIt.x`, exactly as before the split, so neither the
 # outer layers nor the ~3150 tests need to learn where a name lives.
 # A hand-maintained export list would drift; this cannot.
@@ -91,11 +94,12 @@ include("docstrings.jl")
 include("terminal.jl")
 include("theming.jl")
 include("selector.jl")
+include("manyui_frontend.jl")
 include("shell_init.jl")
 include("cli.jl")
 include("app.jl")
 
-export main
+export main, launch_selector
 
 """
 Process-level entry point. Parses `args`, dispatches to the
@@ -124,11 +128,8 @@ include("docs_embed.jl")
         _workload_entries = list_tries(_workload_root)
         filter_tries(_workload_entries, "")
         placeholder_slug_for_today(_workload_root)
-        _workload_session = open_session(_workload_root)
-        Tachikoma.update!(
-            _workload_session,
-            Tachikoma.KeyEvent(:char, 'a')
-        )
+        _workload_session = open_session(_workload_root; tachikoma=false)
+        manyui_selector(_workload_session; animate=false)
     end
 end
 

@@ -1,5 +1,3 @@
-using Tachikoma: app
-
 """
 Spawn the command in `ENV["TRY_EDITOR"]` with `path` appended as
 its final argument. Returns `nothing` and never affects the
@@ -452,30 +450,31 @@ EARS coverage: UN8.
 emit_cd_for(path::AbstractString) = isdir(path)
 
 function _dispatch_selector_or_usage()::Int
-    # UN6 guard BEFORE the TTY / alt-screen path: if the terminal is
-    # below the 40×10 minimum, bail cleanly with a single diag.
-    size_err = check_min_terminal_size(stdout)
-    if size_err !== nothing
-        diag(:terminal, size_err)
+    local frontend::SelectorFrontend
+    try
+        frontend = configured_selector_frontend()
+    catch err
+        err isa ArgumentError || rethrow()
+        diag(:frontend, _err_msg(err))
         return ExitCode.USAGE
     end
-    if !is_terminal(stdin)
-        diag(:usage, "no TTY on stdin and no positional slug")
-        return ExitCode.USAGE
+    if requires_terminal(frontend)
+        # UN6 guard BEFORE the TTY / alt-screen path: if the terminal is
+        # below the 40×10 minimum, bail cleanly with a single diag.
+        size_err = check_min_terminal_size(stdout)
+        if size_err !== nothing
+            diag(:terminal, size_err)
+            return ExitCode.USAGE
+        end
+        if !is_terminal(stdin)
+            diag(:usage, "no TTY on stdin and no positional slug")
+            return ExitCode.USAGE
+        end
     end
     root = TriesPath()
-    session = open_session(root)
-    # SD6 — we own the keymap: Tachikoma's defaults claim Ctrl+A, Ctrl+T's
-    # neighbours, and Ctrl+R, intercepting them before `update!` runs,
-    # and only the recording binding has an opt-out. Matching try-rs
-    # (Ctrl+T theme, Ctrl+A about, Ctrl+R rename) means taking all of
-    # them and providing our own theme, about, and help overlays.
-    # `fps` is configurable because the animated background costs one
-    # repaint of every cell it covers per frame — see `configured_fps`.
-    _with_terminal_stdout() do
-        app(session; default_bindings=false, fps=configured_fps())
-    end
-    # Tachikoma has exited by now; terminal is restored, stdout is live.
+    session = open_session(root; tachikoma=(frontend isa TachikomaFrontend))
+    run_selector!(session, frontend)
+    # The frontend has exited by now; terminal/server is restored, stdout is live.
     # Run the deferred-delete confirmation BEFORE emitting any `cd` so the
     # prompt on stderr precedes the shell-evaluable output on stdout
     # (Principle I / FR-037 / ED10).

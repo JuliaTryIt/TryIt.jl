@@ -205,9 +205,10 @@ the session. An unknown `TRY_THEME` is ignored rather than fatal.
 
 On by default. Configure with `TRY_BACKGROUND`:
 
-Which animation plays is independent of which theme is active: every
-colour animation derives its palette from the theme, so the two
-compose.
+Which animation plays is independent of the active theme. The legacy
+Tachikoma projection derives colour effects from its theme; the shared
+ManyUI projections preserve the same effect identity with a portable Julia
+palette.
 
 | Value                             | Effect                                |
 | --------------------------------- | ------------------------------------- |
@@ -216,6 +217,7 @@ compose.
 | `plasma`                          | Interfering sine fields               |
 | `rain`                            | Falling columns with decaying tails   |
 | `pulse`                           | A single slow brightness breath       |
+| `mesh`                            | Animated triangulated colour field    |
 | `dotwave`                         | Braille terrain, full-bleed           |
 | `phylo`                           | Phylogenetic tree, full-bleed         |
 | `clado`                           | Cladogram, full-bleed                 |
@@ -224,7 +226,7 @@ compose.
 `TRY_ANIMATION` is an alias for `TRY_BACKGROUND`, which keeps
 precedence. `wash` is still accepted as the former name of `fog`.
 
-The first five paint cell *background colours*; the three from
+The first six paint cell *background colours*; the three from
 Tachikoma paint braille glyphs in the foreground and so render
 full-bleed through the panels.
 
