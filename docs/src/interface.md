@@ -201,6 +201,11 @@ restores whatever was active when the picker opened, and `Enter`
 keeps the highlighted one. It overrides `TRY_THEME` for the rest of
 the session. An unknown `TRY_THEME` is ignored rather than fatal.
 
+In the ManyUI frontends the theme picker is a centered modal window, as are
+the `Ctrl+B` animation picker, `Ctrl+A` About window, and `?` help window.
+The TUI palette is regenerated as themes are previewed, so foreground and
+title contrast changes immediately together with the animated background.
+
 ## Animated background
 
 On by default. Configure with `TRY_BACKGROUND`:

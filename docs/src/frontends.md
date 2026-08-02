@@ -62,10 +62,24 @@ The selector root always accepts the complete backend viewport. TUI and
 WebTUI therefore resize beyond their former 80x24 intrinsic area, and the
 animation starts only after the application is actually open.
 
+## Themes and modal windows
+
+The terminal stylesheet is rebuilt from the active Tachikoma palette. Text,
+dimmed shortcuts, titles, borders, and the opaque modal surface therefore keep
+the same contrast as the reference selector even when an animated light
+background is visible through the ordinary panels.
+
+`Ctrl+T` opens the theme picker and `Ctrl+B` opens the animation picker.
+Moving with `↑`/`↓` previews the highlighted choice, `Enter` keeps it, and
+`Esc` restores the value active before the picker opened. `Ctrl+A` About and
+`?` Help are also centered modal windows. TUI and WebTUI use ManyUI's centered
+popup layer; WebNative projects the same application state as a fixed centered
+DOM overlay.
+
 ## Migration scope
 
 The ManyUI selector covers filter, select, open, create, preview, refresh,
-delete, rename, graduate, theme/background selection, help, about, and quit.
+delete, rename, graduate, theme/animation selection, help, about, and quit.
 The legacy Tachikoma frontend remains available as the visual and behavioural
 reference while the shared effects protocol is extracted into ManyUI. It is
 not the default application path.

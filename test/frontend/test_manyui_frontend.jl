@@ -193,7 +193,7 @@ end
 
         app = TryIt.ManyUITUI.launch(() -> ui,
             TryIt.ManyUITUI.HeadlessBackend(ManyUI.Size(180, 50));
-            stylesheet=TryIt.MANYUI_SELECTOR_STYLESHEET, wait=false)
+            stylesheet=TryIt.manyui_selector_stylesheet(), wait=false)
         sleep(0.15)
         @test ManyUI.region(ui) == ManyUI.Region(1, 1, 180, 50)
         @test ui.tick[] > 0
@@ -201,4 +201,146 @@ end
         close(app)
         wait(app)
     end
+end
+
+@testitem "frontend: terminal palette follows the active Tachikoma theme" begin
+    using TryIt
+    const ManyUI = TryIt.ManyUI
+    import Tachikoma
+
+    original = Tachikoma.theme().name
+    try
+        @test TryIt.apply_theme!("paper")
+        ui = TryIt.manyui_selector(TryIt.open_session(
+            TryIt.TriesPath(positional=mktempdir()); tachikoma=false))
+        ManyUI.apply_stylesheet!(TryIt.manyui_selector_stylesheet(), ui)
+
+        screen = ManyUI.query_one(ui, "#screen")
+        title = ManyUI.query_one(ui, "#search_title")
+        help = ManyUI.query_one(ui, "#key_help")
+        theme = Tachikoma.theme()
+        css_color(c) = let rgb = Tachikoma.to_rgb(c)
+            ManyUI.rgb(rgb.r, rgb.g, rgb.b)
+        end
+        @test ManyUI.computed_style(screen).fg == css_color(theme.text)
+        @test ManyUI.computed_style(title).fg == css_color(theme.title)
+        @test ManyUI.computed_style(help).fg == css_color(theme.text_dim)
+    finally
+        TryIt.apply_theme!(original)
+    end
+end
+
+@testitem "frontend: Ctrl-T opens a centered modal theme picker" begin
+    using TryIt
+    const ManyUI = TryIt.ManyUI
+    const ManyUITUI = TryIt.ManyUITUI
+    import Tachikoma
+
+    original = Tachikoma.theme().name
+    try
+        session = TryIt.open_session(
+            TryIt.TriesPath(positional=mktempdir()); tachikoma=false)
+        ui = TryIt.manyui_selector(session)
+        sheet = TryIt.manyui_selector_stylesheet()
+        app = ManyUITUI.App(ui, ManyUITUI.HeadlessDriver(ManyUI.Size(80, 30));
+            stylesheet=sheet)
+        ManyUI.apply_stylesheet!(sheet, ui)
+        ManyUI.layout!(ui, ManyUI.Region(1, 1, 80, 30))
+
+        ManyUITUI.handle!(app, ManyUI.key('t'; ctrl=true))
+        popup = ManyUI.popup_of(app)
+        @test popup !== nothing
+        @test popup.placement === ManyUI.PopupPlacement.CENTER
+        @test session.mode === :theme
+        ManyUITUI.frame!(app)
+        expected = ManyUI.popup_region(ManyUI.region(ui), popup.size,
+            ManyUI.PopupPlacement.CENTER, ManyUI.Size(80, 30))
+        @test ManyUI.region(popup.content) == expected
+
+        before = Tachikoma.theme().name
+        ManyUITUI.handle!(app, ManyUI.key(ManyUI.Key.DOWN))
+        @test Tachikoma.theme().name != before
+        ManyUITUI.handle!(app, ManyUI.key(ManyUI.Key.ESCAPE))
+        @test ManyUI.popup_of(app) === nothing
+        @test Tachikoma.theme().name == original
+        @test session.mode === :normal
+    finally
+        TryIt.apply_theme!(original)
+    end
+end
+
+@testitem "frontend: About and Help open centered modal windows" begin
+    using TryIt
+    const ManyUI = TryIt.ManyUI
+    const ManyUITUI = TryIt.ManyUITUI
+
+    function open_with(key_event)
+        session = TryIt.open_session(
+            TryIt.TriesPath(positional=mktempdir()); tachikoma=false)
+        ui = TryIt.manyui_selector(session)
+        sheet = TryIt.manyui_selector_stylesheet()
+        app = ManyUITUI.App(ui, ManyUITUI.HeadlessDriver(ManyUI.Size(80, 30));
+            stylesheet=sheet)
+        ManyUI.apply_stylesheet!(sheet, ui)
+        ManyUI.layout!(ui, ManyUI.Region(1, 1, 80, 30))
+        ManyUITUI.handle!(app, key_event)
+        return app
+    end
+
+    about = open_with(ManyUI.key('a'; ctrl=true))
+    @test ManyUI.popup_of(about) !== nothing
+    @test ManyUI.popup_of(about).placement === ManyUI.PopupPlacement.CENTER
+    @test ManyUI.node(ManyUI.popup_of(about).content).id === :about_dialog
+    filter = ManyUI.query_one(about.root, "#filter")
+    ManyUITUI.focus!(about, filter)
+    ManyUITUI.handle!(about, ManyUI.key('x'))
+    @test isempty(filter.text[])
+    @test ManyUI.popup_of(about) !== nothing
+
+    help = open_with(ManyUI.key('?'))
+    @test ManyUI.popup_of(help) !== nothing
+    @test ManyUI.popup_of(help).placement === ManyUI.PopupPlacement.CENTER
+    @test ManyUI.node(ManyUI.popup_of(help).content).id === :help_dialog
+
+    native_session = TryIt.open_session(
+        TryIt.TriesPath(positional=mktempdir()); tachikoma=false)
+    native_ui = TryIt.manyui_selector(native_session)
+    @test TryIt.ManyUIWeb.process_native_event!(native_ui,
+        (id="tryit_background", event="key", value="ctrl+a"))
+    html = TryIt.ManyUIWeb.to_html(native_ui)
+    @test occursin("id=\"modal_layer\"", html)
+    @test occursin("id=\"native_about_dialog\"", html)
+    @test TryIt.ManyUIWeb.process_native_event!(native_ui,
+        (id="tryit_background", event="key", value="escape"))
+    @test !occursin("id=\"modal_layer\"", TryIt.ManyUIWeb.to_html(native_ui))
+end
+
+@testitem "frontend: Ctrl-B opens a centered modal animation picker" begin
+    using TryIt
+    const ManyUI = TryIt.ManyUI
+    const ManyUITUI = TryIt.ManyUITUI
+
+    session = TryIt.open_session(
+        TryIt.TriesPath(positional=mktempdir()); tachikoma=false)
+    ui = TryIt.manyui_selector(session;
+        effect=TryIt.selector_background_effect("fog"))
+    sheet = TryIt.manyui_selector_stylesheet()
+    app = ManyUITUI.App(ui, ManyUITUI.HeadlessDriver(ManyUI.Size(80, 30));
+        stylesheet=sheet)
+    ManyUI.apply_stylesheet!(sheet, ui)
+    ManyUI.layout!(ui, ManyUI.Region(1, 1, 80, 30))
+
+    ManyUITUI.handle!(app, ManyUI.key('b'; ctrl=true))
+    popup = ManyUI.popup_of(app)
+    @test popup !== nothing
+    @test popup.placement === ManyUI.PopupPlacement.CENTER
+    @test ManyUI.node(popup.content).id === :animation_dialog
+    @test session.mode === :animation
+
+    ManyUITUI.handle!(app, ManyUI.key(ManyUI.Key.DOWN))
+    @test TryIt.background_name(ui.effect) == TryIt.BACKGROUND_NAMES[2]
+    ManyUITUI.handle!(app, ManyUI.key(ManyUI.Key.ESCAPE))
+    @test ManyUI.popup_of(app) === nothing
+    @test TryIt.background_name(ui.effect) == "fog"
+    @test session.mode === :normal
 end

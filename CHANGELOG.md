@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The ManyUI TUI now derives its foreground, dim, title, border, and modal
+  colours from the active Tachikoma theme. Light animated backgrounds no
+  longer inherit the terminal's pale default foreground.
+- `Ctrl+T` and `Ctrl+B` now open centered theme and animation pickers in the
+  ManyUI frontends, with live preview, confirmation, and cancellation.
+  `Ctrl+A` About and `?` Help use the same centered modal presentation instead
+  of being inserted into the selector layout.
+
 ### Added
 
 - The selector now has a ManyUI-first application path shared by local TUI,

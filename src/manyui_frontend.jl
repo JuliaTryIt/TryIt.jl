@@ -138,21 +138,47 @@ mutable struct SelectorBackgroundWidget <: ManyUI.Widget
     effect::SelectorBackgroundEffect
     tick::ManyUI.Reactive{Int}
     keymap::Dict{ManyUI.KeyEvent, Function}
+    on_popup_close::Function
+    on_unmapped_key::Function
 end
 
 function SelectorBackgroundWidget(content::ManyUI.Widget;
         effect::SelectorBackgroundEffect=selector_background_effect(),
-        keymap::Dict{ManyUI.KeyEvent, Function}=Dict{ManyUI.KeyEvent, Function}())
+        keymap::Dict{ManyUI.KeyEvent, Function}=Dict{ManyUI.KeyEvent, Function}(),
+        on_popup_close::Function=() -> nothing,
+        on_unmapped_key::Function=() -> false)
     w = SelectorBackgroundWidget(
         ManyUI.WidgetNode(; id=:tryit_background,
             classes=[:tryit_background], type_name=:SelectorBackground),
         effect,
         ManyUI.Reactive(0; kind=ManyUI.Dirty.PAINT),
-        keymap)
+        keymap,
+        on_popup_close,
+        on_unmapped_key)
     ManyUI.attach_reactives!(w)
     ManyUI.mount!(w, content)
     return w
 end
+
+ManyUI.on_popup_close!(w::SelectorBackgroundWidget)::Nothing =
+    (w.on_popup_close(); nothing)
+
+"A zero-sized TUI sibling projected as a fixed modal layer by WebNative."
+mutable struct SelectorModalLayer <: ManyUI.Widget
+    node::ManyUI.WidgetNode
+end
+
+function SelectorModalLayer(dialogs::ManyUI.Widget...)
+    layer = SelectorModalLayer(ManyUI.WidgetNode(; id=:modal_layer,
+        classes=[:modal_layer], type_name=:SelectorModalLayer))
+    for dialog in dialogs
+        ManyUI.mount!(layer, dialog)
+    end
+    ManyUI.set_visible!(layer, false)
+    return layer
+end
+
+ManyUI.measure(::SelectorModalLayer, ::ManyUI.Size)::ManyUI.Size = ManyUI.Size(0, 0)
 
 # This is the application composition root, not a content-sized decoration.
 # Returning the offered viewport is what lets terminal and WebTUI targets use
@@ -162,7 +188,10 @@ ManyUI.measure(::SelectorBackgroundWidget, available::ManyUI.Size)::ManyUI.Size 
 function ManyUI.on_event!(w::SelectorBackgroundWidget,
         dispatch::ManyUI.Dispatch{ManyUI.KeyEvent})::Nothing
     action = get(w.keymap, ManyUI.event(dispatch), nothing)
-    action === nothing && return nothing
+    if action === nothing
+        w.on_unmapped_key() && ManyUI.consume!(dispatch)
+        return nothing
+    end
     action() === false && return nothing
     ManyUI.consume!(dispatch)
     return nothing
@@ -228,11 +257,16 @@ body::before, body::after { display: none !important; }
 #footer { display: flex !important; flex-direction: row !important; flex: 0 0 auto; align-items: center; min-height: 2rem; gap: .5rem; background: var(--tryit-panel) !important; border-top: 1px solid var(--tryit-border) !important; }
 #actions { display: flex !important; flex: 1 1 auto; flex-flow: row wrap !important; align-items: center; }
 #key_help { display: none; }
-#actions .manyui-button, #close_info { padding: .25rem .45rem; border: 0; border-radius: 0; background: transparent; color: var(--tryit-dim); box-shadow: none; font: 700 .72rem/1rem ui-monospace, monospace; }
-#actions .manyui-button:hover, #close_info:hover { transform: none; color: var(--tryit-accent); background: var(--tryit-selected); box-shadow: none; }
+#actions .manyui-button { padding: .25rem .45rem; border: 0; border-radius: 0; background: transparent; color: var(--tryit-dim); box-shadow: none; font: 700 .72rem/1rem ui-monospace, monospace; }
+#actions .manyui-button:hover { transform: none; color: var(--tryit-accent); background: var(--tryit-selected); box-shadow: none; }
 #status { padding: .25rem .5rem; color: var(--tryit-dim); font-size: .72rem; white-space: nowrap; text-align: right; }
-#info_panel { padding: .75rem; border: 1px solid var(--tryit-border); background: var(--tryit-panel) !important; color: var(--tryit-text); }
-#info_text { white-space: pre-wrap; font: .82rem/1.35 ui-monospace, monospace; text-align: left; }
+#modal_layer { position: fixed; inset: 0; z-index: 20; display: flex !important; align-items: center !important; justify-content: center !important; padding: 1rem; background: rgba(0, 0, 0, .28) !important; }
+#modal_layer .modal { display: flex !important; flex-direction: column !important; width: min(34rem, calc(100vw - 2rem)); max-height: calc(100vh - 2rem); padding: .65rem; border: 1px solid var(--tryit-accent); background: var(--tryit-base) !important; color: var(--tryit-text); box-shadow: 0 1rem 3rem rgba(0, 0, 0, .35); }
+#modal_layer .modal_title { color: var(--tryit-title); font-weight: 700; }
+#modal_layer .modal_hint { color: var(--tryit-dim); }
+#modal_layer .manyui-list { min-height: 8rem; overflow: auto; }
+#modal_layer .manyui-list-item { padding: .2rem .45rem; color: var(--tryit-text); }
+#modal_layer .manyui-list-selected { background: var(--tryit-selected) !important; color: var(--tryit-accent); font-weight: 700; }
 @media (max-width: 850px) {
   #main { grid-template-columns: 1fr; grid-template-rows: minmax(18rem, 1fr) auto; overflow: auto; }
   #side { display: grid !important; grid-template-columns: 1fr 1fr; }
@@ -260,7 +294,10 @@ if (!window.tryitShortcutsInstalled) {
     } else if (event.key === '?' && !event.target.matches('input, textarea')) {
       key = '?';
     }
-    if (key === null) return;
+    if (key === null) {
+      if (document.getElementById('modal_layer')) event.preventDefault();
+      return;
+    }
     event.preventDefault();
     dispatch_event('tryit_background', 'key', key);
   });
@@ -538,6 +575,13 @@ function ManyUIWeb.to_html(w::SelectorBackgroundWidget)
         _WEB_SHORTCUT_SCRIPT, _WEB_CANVAS_SCRIPT)
 end
 
+function ManyUIWeb.to_html(w::SelectorModalLayer)
+    ManyUI.is_visible(w) || return ""
+    inner = join(ManyUIWeb.to_html(child) for child in ManyUI.children(w)
+        if ManyUI.is_visible(child))
+    return "<div id=\"modal_layer\" class=\"modal_layer\">$inner</div>"
+end
+
 function ManyUIWeb.process_native_event!(root::SelectorBackgroundWidget, data)::Bool
     if String(data.id) == "tryit_background" && String(data.event) == "key"
         value = hasproperty(data, :value) ? data.value : nothing
@@ -572,13 +616,20 @@ function _start_background_animation!(w::SelectorBackgroundWidget, stop::Base.Re
     return nothing
 end
 
-const MANYUI_SELECTOR_STYLESHEET = ManyUITUI.parse_css("""
-    #screen        { layout: column; width: 100%; height: 100%; gap: 0; }
+function manyui_selector_stylesheet()
+    theme = Tachikoma.theme()
+    text = _css_rgb(theme.text)
+    dim = _css_rgb(theme.text_dim)
+    title = _css_rgb(theme.title)
+    accent = _css_rgb(theme.accent)
+    background = _css_rgb(theme.bg)
+    return ManyUITUI.parse_css("""
+    #screen        { layout: column; width: 100%; height: 100%; gap: 0; color: $text; }
     #main          { layout: row; grow: 1; gap: 0; }
     #left          { layout: column; grow: 1; }
     #side          { layout: column; width: 34; shrink: 0; }
-    .panel         { layout: column; border: solid #a78bfa; }
-    .panel_title   { color: #a78bfa; text-style: bold; height: 1; shrink: 0; }
+    .panel         { layout: column; border: solid $accent; }
+    .panel_title   { color: $title; text-style: bold; height: 1; shrink: 0; }
     #search_panel  { height: 4; shrink: 0; }
     #filter        { height: 1; shrink: 0; }
     #rename_input  { height: 1; shrink: 0; }
@@ -591,10 +642,14 @@ const MANYUI_SELECTOR_STYLESHEET = ManyUITUI.parse_css("""
     #legend        { grow: 1; }
     #footer        { layout: row; height: 1; shrink: 0; }
     #actions       { display: none; }
-    #key_help      { color: #94a3b8; grow: 1; }
+    #key_help      { color: $dim; grow: 1; }
     #status        { display: none; }
-    #info_panel    { border: round #a78bfa; padding: 1; shrink: 0; }
-""")
+    .modal         { layout: column; color: $text; background: $background; border: round $accent; padding: 1; }
+    .modal_title   { color: $title; text-style: bold; height: 1; shrink: 0; }
+    .modal_hint    { color: $dim; height: 1; shrink: 0; }
+    #theme_list, #animation_list { grow: 1; }
+    """)
+end
 
 function _manyui_try_label(t::Try)
     return string(t.date, " ", t.name, "  (",
@@ -774,52 +829,16 @@ function manyui_selector(m::SelectorSession;
         end;
         id=:graduate)
 
-    info_text = ManyUI.Label(""; id=:info_text)
-    close_info = ManyUI.Button(
-        "Close", _ -> begin
-            ManyUI.set_visible!(ManyUI.parent(info_text), false)
-            nothing
-        end;
-        id=:close_info)
-    info_panel = ManyUI.Container(info_text, close_info; id=:info_panel)
-    ManyUI.set_visible!(info_panel, false)
+    theme_action = Ref{Function}(() -> nothing)
+    animation_action = Ref{Function}(() -> nothing)
+    about_action = Ref{Function}(() -> nothing)
+    help_action = Ref{Function}(() -> nothing)
 
-    function show_info!(text)
-        info_text.text[] = text
-        ManyUI.set_visible!(info_panel, true)
-        return nothing
-    end
-
-    theme_button = ManyUI.Button("Ctrl+T Theme",
-        _ -> begin
-            names = theme_names()
-            current = findfirst(==(Tachikoma.theme().name), names)
-            next = names[mod1(something(current, 0) + 1, length(names))]
-            apply_theme!(next)
-            status.text[] = "Theme: $next"
-            ManyUI.mark!(canvas_ref[], ManyUI.Dirty.PAINT)
-            nothing
-        end; id=:theme)
-    background_button = ManyUI.Button("Background",
-        _ -> begin
-            current = findfirst(==(background_name(canvas_ref[].effect)), BACKGROUND_NAMES)
-            next = BACKGROUND_NAMES[mod1(something(current, 0) + 1,
-                length(BACKGROUND_NAMES))]
-            canvas_ref[].effect = selector_background_effect(next)
-            ManyUI.mark!(canvas_ref[], ManyUI.Dirty.PAINT)
-            status.text[] = "Background: $next"
-            nothing
-        end;
-        id=:background)
-    about_button = ManyUI.Button("Ctrl+A About",
-        _ -> show_info!(
-            "TryIt.jl\nEphemeral workspaces through ManyUI\nTUI | WebNative | WebTUI");
-        id=:about)
-    help_button = ManyUI.Button("? Help",
-        _ -> show_info!(
-            "Enter Open | Ctrl+D Delete | Ctrl+R Rename | Ctrl+G Graduate\n" *
-            "Ctrl+T Theme | ? Help | Esc Quit");
-        id=:help)
+    theme_button = ManyUI.Button("Ctrl+T Theme", _ -> theme_action[](); id=:theme)
+    background_button = ManyUI.Button(
+        "Ctrl+B Animation", _ -> animation_action[](); id=:background)
+    about_button = ManyUI.Button("Ctrl+A About", _ -> about_action[](); id=:about)
+    help_button = ManyUI.Button("? Help", _ -> help_action[](); id=:help)
 
     search_panel = ManyUI.Container(
         ManyUI.Label("Search/New"; id=:search_title, classes=[:panel_title]),
@@ -846,15 +865,210 @@ function manyui_selector(m::SelectorSession;
         rename_button, graduate_button, theme_button, background_button,
         about_button, help_button, refresh_button, quit_button; id=:actions)
     key_help = ManyUI.Label(
-        "↑↓ Nav | Enter Select | Ctrl+D Del | Ctrl+R Rename | Ctrl+G Graduate | Ctrl+T Theme | Ctrl+A About | ? Help | Esc Quit";
+        "↑↓ Nav | Enter Select | Ctrl+D Del | Ctrl+R Rename | Ctrl+G Graduate | Ctrl+T Theme | Ctrl+B Animation | Ctrl+A About | ? Help | Esc Quit";
         id=:key_help)
     footer = ManyUI.Container(actions, key_help, status; id=:footer)
-    content = ManyUI.Container(main, info_panel, footer; id=:screen)
+    content = ManyUI.Container(main, footer; id=:screen)
+
+    function info_dialog(id::Symbol, title::String, body::String)
+        return ManyUI.Container(
+            ManyUI.Label(title; classes=[:modal_title]),
+            ManyUI.Label(body),
+            ManyUI.Label("Esc  Close"; classes=[:modal_hint]);
+            id=id, classes=[:modal])
+    end
+
+    about_body = "TryIt.jl  version $(ABOUT_VERSION)\n" *
+        "Repo: github.com/s-celles/TryIt.jl\n" *
+        "Docs: s-celles.github.io/TryIt.jl\n\n" *
+        "Ephemeral-workspace manager for Julia.\n\n" *
+        "Inspired by try-cli and try-rs\n" *
+        "UI powered by ManyUI"
+    help_body = join((rpad(key, 10) * description for (key, description) in HELP_KEYS),
+        '\n')
+
+    theme_change = Ref{Function}(_ -> nothing)
+    theme_submit = Ref{Function}(_ -> nothing)
+    animation_change = Ref{Function}(_ -> nothing)
+    animation_submit = Ref{Function}(_ -> nothing)
+
+    theme_list = ManyUI.List(copy(theme_names()),
+        w -> theme_submit[](w); on_change=w -> theme_change[](w), id=:theme_list)
+    theme_dialog = ManyUI.Container(
+        ManyUI.Label("Theme"; classes=[:modal_title]), theme_list,
+        ManyUI.Label("↑↓ Preview  Enter Keep  Esc Cancel"; classes=[:modal_hint]);
+        id=:theme_dialog, classes=[:modal])
+    native_theme_list = ManyUI.List(copy(theme_names()),
+        w -> theme_submit[](w); on_change=w -> theme_change[](w),
+        id=:native_theme_list)
+    native_theme_dialog = ManyUI.Container(
+        ManyUI.Label("Theme"; classes=[:modal_title]), native_theme_list,
+        ManyUI.Label("↑↓ Preview  Enter Keep  Esc Cancel"; classes=[:modal_hint]);
+        id=:native_theme_dialog, classes=[:modal])
+
+    animation_list = ManyUI.List(copy(BACKGROUND_NAMES),
+        w -> animation_submit[](w); on_change=w -> animation_change[](w),
+        id=:animation_list)
+    animation_dialog = ManyUI.Container(
+        ManyUI.Label("Animation"; classes=[:modal_title]), animation_list,
+        ManyUI.Label("↑↓ Preview  Enter Keep  Esc Cancel"; classes=[:modal_hint]);
+        id=:animation_dialog, classes=[:modal])
+    native_animation_list = ManyUI.List(copy(BACKGROUND_NAMES),
+        w -> animation_submit[](w); on_change=w -> animation_change[](w),
+        id=:native_animation_list)
+    native_animation_dialog = ManyUI.Container(
+        ManyUI.Label("Animation"; classes=[:modal_title]), native_animation_list,
+        ManyUI.Label("↑↓ Preview  Enter Keep  Esc Cancel"; classes=[:modal_hint]);
+        id=:native_animation_dialog, classes=[:modal])
+
+    about_dialog = info_dialog(:about_dialog, "About", about_body)
+    native_about_dialog = info_dialog(:native_about_dialog, "About", about_body)
+    help_dialog = info_dialog(:help_dialog, "Key bindings", help_body)
+    native_help_dialog = info_dialog(:native_help_dialog, "Key bindings", help_body)
+    native_dialogs = (native_theme_dialog, native_animation_dialog,
+        native_about_dialog, native_help_dialog)
+    foreach(dialog -> ManyUI.set_visible!(dialog, false), native_dialogs)
+    modal_layer = SelectorModalLayer(native_dialogs...)
+
+    terminal_app() = begin
+        current = ManyUI.app(canvas_ref[])
+        current isa ManyUITUI.App ? current : nothing
+    end
+    function repaint_theme!()
+        current = terminal_app()
+        if current !== nothing
+            sheet = manyui_selector_stylesheet()
+            current.stylesheet = sheet
+            ManyUI.apply_stylesheet!(sheet, current.root)
+            popup = ManyUI.popup_of(current)
+            popup === nothing || ManyUI.apply_stylesheet!(sheet, popup.content)
+            ManyUITUI.invalidate!(current)
+        end
+        ManyUI.mark!(canvas_ref[], ManyUI.Dirty.PAINT)
+        return nothing
+    end
+    function show_native_dialog!(dialog)
+        foreach(item -> ManyUI.set_visible!(item, item === dialog), native_dialogs)
+        ManyUI.set_visible!(modal_layer, true)
+        return nothing
+    end
+    function hide_native_dialogs!()
+        ManyUI.set_visible!(modal_layer, false)
+        foreach(item -> ManyUI.set_visible!(item, false), native_dialogs)
+        return nothing
+    end
+    function open_modal!(mode::Symbol, terminal_dialog, native_dialog,
+            size::ManyUI.Size)
+        m.mode === :normal || return nothing
+        m.mode = mode
+        current = terminal_app()
+        if current === nothing
+            show_native_dialog!(native_dialog)
+        else
+            ManyUI.open_popup!(current,
+                ManyUI.Popup(terminal_dialog, canvas_ref[], size;
+                    placement=ManyUI.PopupPlacement.CENTER))
+        end
+        return nothing
+    end
+    function close_modal!()
+        m.mode = :normal
+        current = terminal_app()
+        if current === nothing
+            hide_native_dialogs!()
+        else
+            ManyUI.close_popup!(current, canvas_ref[])
+        end
+        return nothing
+    end
+
+    animation_before = Ref(effect)
+    function restore_open_picker!()
+        if m.mode === :theme
+            apply_theme!(m.theme_before)
+            repaint_theme!()
+        elseif m.mode === :animation
+            canvas_ref[].effect = animation_before[]
+            m.background = animation_before[].background
+            ManyUI.mark!(canvas_ref[], ManyUI.Dirty.PAINT)
+        end
+        m.mode = :normal
+        hide_native_dialogs!()
+        return nothing
+    end
+
+    function preview_theme!(source)
+        idx = ManyUI.row_cursor(source)
+        1 <= idx <= length(theme_names()) || return nothing
+        m.theme_index = idx
+        source === theme_list || ManyUI.set_cursor!(theme_list, idx)
+        source === native_theme_list || ManyUI.set_cursor!(native_theme_list, idx)
+        name = theme_names()[idx]
+        apply_theme!(name)
+        status.text[] = "Theme: $name"
+        repaint_theme!()
+        return nothing
+    end
+    function preview_animation!(source)
+        idx = ManyUI.row_cursor(source)
+        1 <= idx <= length(BACKGROUND_NAMES) || return nothing
+        m.anim_index = idx
+        source === animation_list || ManyUI.set_cursor!(animation_list, idx)
+        source === native_animation_list || ManyUI.set_cursor!(native_animation_list, idx)
+        name = BACKGROUND_NAMES[idx]
+        current = canvas_ref[].effect
+        canvas_ref[].effect = selector_background_effect(name;
+            intensity=current.intensity, preset=current.preset)
+        m.background = canvas_ref[].effect.background
+        status.text[] = "Animation: $name"
+        ManyUI.mark!(canvas_ref[], ManyUI.Dirty.PAINT)
+        return nothing
+    end
+    theme_change[] = preview_theme!
+    animation_change[] = preview_animation!
+    theme_submit[] = _ -> close_modal!()
+    animation_submit[] = _ -> close_modal!()
+
+    function open_theme!()
+        _open_theme_picker!(m)
+        idx = m.theme_index
+        ManyUI.set_cursor!(theme_list, idx)
+        ManyUI.set_cursor!(native_theme_list, idx)
+        # `_open_theme_picker!` sets the mode before the common opener.
+        m.mode = :normal
+        return open_modal!(:theme, theme_dialog, native_theme_dialog,
+            ManyUI.Size(34, min(length(theme_names()) + 4, 24)))
+    end
+    function open_animation!()
+        animation_before[] = canvas_ref[].effect
+        m.anim_before = background_name(animation_before[])
+        idx = findfirst(==(m.anim_before), BACKGROUND_NAMES)
+        m.anim_index = something(idx, 1)
+        ManyUI.set_cursor!(animation_list, m.anim_index)
+        ManyUI.set_cursor!(native_animation_list, m.anim_index)
+        return open_modal!(:animation, animation_dialog, native_animation_dialog,
+            ManyUI.Size(30, min(length(BACKGROUND_NAMES) + 4, 24)))
+    end
+    theme_action[] = open_theme!
+    animation_action[] = open_animation!
+    about_action[] = () -> open_modal!(:about, about_dialog, native_about_dialog,
+        ManyUI.Size(52, 15))
+    help_action[] = () -> open_modal!(:help, help_dialog, native_help_dialog,
+        ManyUI.Size(64, min(length(HELP_KEYS) + 4, 26)))
 
     click(button) = () -> (button.on_click(button); nothing)
     escape = () -> begin
-        if ManyUI.node(info_panel).visible
-            ManyUI.set_visible!(info_panel, false)
+        if m.mode === :theme
+            apply_theme!(m.theme_before)
+            repaint_theme!()
+            close_modal!()
+        elseif m.mode === :animation
+            canvas_ref[].effect = animation_before[]
+            m.background = animation_before[].background
+            ManyUI.mark!(canvas_ref[], ManyUI.Dirty.PAINT)
+            close_modal!()
+        elseif m.mode in (:about, :help)
+            close_modal!()
         elseif m.mode === :rename
             m.mode = :normal
             m.rename_buf = ""
@@ -866,19 +1080,37 @@ function manyui_selector(m::SelectorSession;
         return nothing
     end
     question = () -> begin
+        m.mode === :normal || return false
         isempty(m.filter) || return false
         help_button.on_click(help_button)
         return nothing
     end
     move_selection = delta -> begin
+        if m.mode === :theme
+            ManyUI.set_cursor!(theme_list,
+                clamp(m.theme_index + delta, 1, length(theme_names())))
+            return nothing
+        elseif m.mode === :animation
+            ManyUI.set_cursor!(animation_list,
+                clamp(m.anim_index + delta, 1, length(BACKGROUND_NAMES)))
+            return nothing
+        elseif m.mode !== :normal
+            return false
+        end
         isempty(m.visible) && return nothing
         ManyUI.set_cursor!(folders,
             clamp(ManyUI.row_cursor(folders) + delta, 1, length(m.visible)))
         return nothing
     end
+    enter = () -> begin
+        m.mode in (:theme, :animation, :about, :help) || return false
+        close_modal!()
+        return nothing
+    end
     keymap = Dict{ManyUI.KeyEvent, Function}(
         ManyUI.key(ManyUI.Key.UP) => () -> move_selection(-1),
         ManyUI.key(ManyUI.Key.DOWN) => () -> move_selection(1),
+        ManyUI.key(ManyUI.Key.ENTER) => enter,
         ManyUI.key('d'; ctrl=true) => click(delete_button),
         ManyUI.key('r'; ctrl=true) => click(rename_button),
         ManyUI.key('g'; ctrl=true) => click(graduate_button),
@@ -888,8 +1120,11 @@ function manyui_selector(m::SelectorSession;
         ManyUI.key('?') => question,
         ManyUI.key(ManyUI.Key.ESCAPE) => escape
     )
-    canvas = SelectorBackgroundWidget(content; effect=effect, keymap=keymap)
+    canvas = SelectorBackgroundWidget(content; effect=effect, keymap=keymap,
+        on_popup_close=restore_open_picker!,
+        on_unmapped_key=() -> m.mode in (:theme, :animation, :about, :help))
     canvas_ref[] = canvas
+    ManyUI.mount!(canvas, modal_layer)
     animate && _start_background_animation!(canvas, animation_stop)
     return canvas
 end
@@ -901,7 +1136,7 @@ function _launch_manyui(factory, ::ManyUITUIFrontend)
     # the real window size, so make it the terminal driver's explicit output.
     backend = ManyUITUI.TerminalBackend(in_stream=stdin, out_stream=stderr)
     return ManyUITUI.launch(factory, backend;
-        stylesheet=MANYUI_SELECTOR_STYLESHEET, wait=false)
+        stylesheet=manyui_selector_stylesheet(), wait=false)
 end
 
 function _launch_manyui(factory, frontend::WebNativeFrontend)
@@ -912,7 +1147,7 @@ end
 function _launch_manyui(factory, frontend::WebTUIFrontend)
     backend = ManyUIWeb.WebBackend(port=frontend.port)
     return ManyUITUI.launch(factory, backend;
-        stylesheet=MANYUI_SELECTOR_STYLESHEET, wait=false)
+        stylesheet=manyui_selector_stylesheet(), wait=false)
 end
 
 _selector_handle_isopen(handle) = isopen(handle)

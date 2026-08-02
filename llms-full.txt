@@ -56,6 +56,11 @@ Colour and glyph effects are accepted in every current ManyUI projection. The
 projections preserve effect identity and animation intent, but are not expected
 to produce pixel-identical cell and CSS output. `off` disables painting.
 
+The active Tachikoma theme supplies the ManyUI TUI foreground, dim, title,
+border, and modal colours. Theme (`Ctrl+T`), animation (`Ctrl+B`), About
+(`Ctrl+A`), and Help (`?`) open centered modal windows. Picker movement previews
+the choice; Enter confirms and Escape restores the previous value.
+
 ## Development
 
 Use `just test` for package tests, `just docs` for documentation, and
