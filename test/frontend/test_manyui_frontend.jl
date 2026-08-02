@@ -54,10 +54,16 @@ end
         @test occursin("tryit-background--$name", html)
 
         if name != "off"
-            @test occursin("animation:", html)
             buffer = ManyUITUI.Buffer(ManyUI.Size(24, 10))
             ManyUITUI.render!(canvas, buffer)
             @test any(c -> c.content != " " || !ManyUI.is_unset(c.style.bg), buffer)
+        end
+        if name in ("fog", "aurora", "plasma", "rain", "pulse", "mesh")
+            @test occursin("tryit_background_canvas", html)
+            @test occursin("data-name=\"$name\"", html)
+            @test occursin("requestAnimationFrame", html)
+        elseif name != "off"
+            @test occursin("animation:", html)
         end
     end
 end
@@ -116,5 +122,83 @@ end
         @test session.done
         @test session.exit_action === :cd
         @test session.exit_path == folders.items[1].path
+    end
+end
+
+@testitem "frontend: ManyUI preserves the Tachikoma information architecture" begin
+    using TryIt
+    const ManyUI = TryIt.ManyUI
+
+    function widget_by_id(w, id)
+        ManyUI.node(w).id === id && return w
+        for child in ManyUI.children(w)
+            found = widget_by_id(child, id)
+            found === nothing || return found
+        end
+        return nothing
+    end
+
+    mktempdir() do dir
+        root = TryIt.TriesPath(positional=dir)
+        selected = TryIt.create_try(root, TryIt.slug("reference"))
+        mkpath(joinpath(selected.path, "src"))
+        write(joinpath(selected.path, "Project.toml"), "name = \"Reference\"\n")
+
+        session = TryIt.open_session(root; tachikoma=false)
+        ui = TryIt.manyui_selector(session)
+
+        for id in (:main, :left, :search_panel, :folders_panel, :side,
+            :disk_panel, :preview_panel, :legend_panel, :footer)
+            @test widget_by_id(ui, id) !== nothing
+        end
+
+        @test widget_by_id(ui, :preview) isa ManyUI.List
+        @test widget_by_id(ui, :legend) isa ManyUI.List
+        for id in (:delete, :rename, :graduate, :theme, :about, :help)
+            @test widget_by_id(ui, id) isa ManyUI.Button
+        end
+
+        row = TryIt._manyui_try_label(selected)
+        @test occursin(string(selected.date), row)
+        @test occursin(selected.name, row)
+        @test occursin("(", row)
+
+        preview = widget_by_id(ui, :preview)
+        @test any(contains("src"), preview.items)
+        @test any(contains("Project.toml"), preview.items)
+    end
+end
+
+@testitem "frontend: terminal backgrounds use the Tachikoma reference engine" begin
+    using TryIt
+
+    for name in ("fog", "mesh", "dotwave", "phylo", "clado")
+        effect = TryIt.selector_background_effect(name; intensity=0.4, preset=2)
+        @test hasproperty(effect, :background)
+        @test effect.background === nothing ||
+              TryIt.animation_name(effect.background) == name
+    end
+end
+
+@testitem "frontend: selector root fills the backend viewport" begin
+    using TryIt
+    const ManyUI = TryIt.ManyUI
+
+    mktempdir() do dir
+        session = TryIt.open_session(
+            TryIt.TriesPath(positional=dir); tachikoma=false)
+        stop = Ref(false)
+        ui = TryIt.manyui_selector(session; animate=true, animation_stop=stop)
+        @test ManyUI.measure(ui, ManyUI.Size(180, 50)) == ManyUI.Size(180, 50)
+
+        app = TryIt.ManyUITUI.launch(() -> ui,
+            TryIt.ManyUITUI.HeadlessBackend(ManyUI.Size(180, 50));
+            stylesheet=TryIt.MANYUI_SELECTOR_STYLESHEET, wait=false)
+        sleep(0.15)
+        @test ManyUI.region(ui) == ManyUI.Region(1, 1, 180, 50)
+        @test ui.tick[] > 0
+        stop[] = true
+        close(app)
+        wait(app)
     end
 end

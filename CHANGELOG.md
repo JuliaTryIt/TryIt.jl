@@ -17,11 +17,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - TryIt backgrounds now have a backend-neutral
   `SelectorBackgroundEffect` and a compositing `SelectorBackgroundWidget`.
-  All color and glyph effects project to terminal cells for TUI/WebTUI and
-  animated CSS for WebNative, leaving a renderer seam for a future Dear ImGui
-  draw-list projection.
+  All color and glyph effects project to terminal cells for TUI/WebTUI and to
+  an animated canvas or CSS fallback for WebNative, leaving a renderer seam
+  for a future Dear ImGui draw-list projection.
 
 ### Changed
+
+- The ManyUI selector now follows the Tachikoma reference layout: Search/New
+  and Folders occupy the main column, while Disk, Preview, and Legends form a
+  secondary column above a shared shortcut footer. Delete, rename, graduate,
+  theme, background, help, and about actions are available from the same
+  widget tree in every projection.
+
+- TUI and WebTUI now measure the selector composition root against the full
+  backend viewport and run the original Tachikoma background renderer on each
+  animation tick. WebNative uses the same logical cell aspect, theme palette,
+  effect parameters, and absolute frame clock for the color-effect canvas.
+  This fixes the former 80x24 top-left layout and the animation task race that
+  could leave the first frame permanently frozen. The local TUI driver also
+  writes through the original stderr TTY, whose `displaysize` reports the real
+  window, instead of the `/dev/tty` IOStream that Julia reports as 80x24.
 
 - `Slug`'s conversion and hashing methods are covered, restoring the
   100 % line coverage of the slug generator that NF16 requires. The

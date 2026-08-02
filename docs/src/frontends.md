@@ -42,22 +42,30 @@ The application model must stay unchanged when a target is added.
 ## Background effects
 
 Backgrounds are represented by `SelectorBackgroundEffect`, which contains
-only a name, intensity, and preset. It contains no terminal cell, HTML node,
-or renderer-specific color type. `SelectorBackgroundWidget` projects that
-same value below the selector content:
+the portable selection data and the resolved reference effect. It contains no
+terminal cell or HTML node. `SelectorBackgroundWidget` projects that same
+value below the selector content:
 
-- ManyUITUI and WebTUI paint terminal cells;
-- WebNative emits animated CSS backgrounds;
+- ManyUITUI and WebTUI call the Tachikoma reference renderer and translate its
+  cells into ManyUI cells;
+- WebNative paints color effects into a full-viewport canvas on the same
+  logical cell grid, using the current Tachikoma palette and effect parameters;
+- glyph effects use a lightweight CSS projection until the generic ManyUI
+  effects engine can expose vector primitives to WebNative;
 - a future Dear ImGui target can translate it to a draw list.
 
 Every configured TryIt effect is accepted by all current projections:
 `fog`, `aurora`, `plasma`, `rain`, `pulse`, `mesh`, `dotwave`, `phylo`,
-`clado`, and `off`. The projections preserve the effect's visual identity,
-although a cell animation and a CSS animation are not pixel-identical.
+`clado`, and `off`.
+
+The selector root always accepts the complete backend viewport. TUI and
+WebTUI therefore resize beyond their former 80x24 intrinsic area, and the
+animation starts only after the application is actually open.
 
 ## Migration scope
 
-The ManyUI selector currently covers the primary workflow: filter, select,
-open, create, refresh, and quit. The legacy Tachikoma frontend remains
-available while advanced overlays and maintenance actions are moved to
-backend-neutral ManyUI widgets. It is not the default application path.
+The ManyUI selector covers filter, select, open, create, preview, refresh,
+delete, rename, graduate, theme/background selection, help, about, and quit.
+The legacy Tachikoma frontend remains available as the visual and behavioural
+reference while the shared effects protocol is extracted into ManyUI. It is
+not the default application path.

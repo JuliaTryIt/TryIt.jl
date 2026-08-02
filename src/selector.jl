@@ -464,8 +464,8 @@ function open_session(root::TriesPath; tachikoma::Bool=true)
     # mutates a Tachikoma global, and re-reading ENV every frame would
     # fight the in-app theme picker (Ctrl-\), which is allowed to win
     # for the rest of the session.
+    apply_theme_from_env!()
     if tachikoma
-        apply_theme_from_env!()
         m.background = background_from_env()
     end
     m.show_fps = configured_show_fps()
